@@ -17,6 +17,10 @@
 
 #define KEY_LEN 13
 
+#define MIN_HEAP_SIZE 1024
+
+#define FILTER_SIZE 128
+
 typedef long long lint;
 typedef unsigned int uint;
 
