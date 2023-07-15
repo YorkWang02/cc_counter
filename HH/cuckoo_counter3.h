@@ -17,7 +17,7 @@ private:
 
 	struct bucket_t {	//one bucket
 		char fingerprint[4];	//four fingerprints  
-		const char *str;
+		char *str;
 		uint8_t count12;		// 
 		uint8_t count3;			//	four entries' counter
 		uint32_t count4;		//
@@ -25,20 +25,28 @@ private:
 	
 	};
 	uint bucket_num, maxloop, h1, h2;	//bucket_num indicates the number of buckets in each array
-    uint32_t threshold;
+    uint32_t threshold;		//阈值一
+	double threshold2;		//阈值二：比例系数
 	bucket_t *bucket[2];		//two arrays
 	BOBHash * bobhash[2];		//Bob hash function
 
 public:
-	CCCounter3(uint _bucket) {
+	CCCounter3(uint _bucket,int value) {
 		bucket_num = _bucket;
+		threshold = value;
+		threshold2 = 0.5;
 		for (int i = 0; i < 2; i++) {
 			bobhash[i] = new BOBHash(i + 1000);
 		}
 		for (int i = 0; i < 2; i++) {	//initialize two arrays 
 			bucket[i] = new bucket_t[bucket_num];
 			memset(bucket[i], 0, sizeof(bucket_t) * bucket_num);
+			for(int j=0;j<bucket_num;j++){
+				bucket[i][j].str = new char[100];
+				bucket[i][j].str[0] = '\0';
+			}
 		}
+	
 	}
 	
 	bool overflow(bucket_t* b, int j,const char *key) {	//overflow occur in entry_j in the bucket
@@ -61,7 +69,7 @@ public:
 				h1 = (bobhash[0]->run(key, strlen(key))); //% bucket_num;
 				char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
 				b->fingerprint[0] = fp;
-				b->str = key;
+				strcpy(b->str,key);
 				b->count12 = b->count12&0xf0 | (uint8_t)b->count5;
 				b->count5 = 0xf;
 			}
@@ -86,7 +94,7 @@ public:
 				h1 = (bobhash[0]->run(key, strlen(key))); //% bucket_num;
 				char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
 				b->fingerprint[1] = fp;
-				b->str = key;
+				strcpy(b->str,key);
 				b->count12 = b->count12&0xf | (uint8_t)(b->count5<<4);
 				b->count5 = 0xf;
 			}
@@ -104,7 +112,7 @@ public:
 				h1 = (bobhash[0]->run(key, strlen(key))); //% bucket_num;
 				char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
 				b->fingerprint[2] = fp;
-				b->str = key;
+				strcpy(b->str,key);
 				b->count3 = (uint8_t)b->count5;
 				b->count5 = 0xff;
 			}
@@ -115,7 +123,7 @@ public:
 				h1 = (bobhash[0]->run(key, strlen(key))); //% bucket_num;
 				char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
 				b->fingerprint[3] = fp;
-				b->str = key;
+				strcpy(b->str,key);
 				b->count4 = (uint16_t)b->count5;
 				b->count5 = 0xffff;
 			}
@@ -154,6 +162,36 @@ public:
                 bool res = overflow(b, j,key);	//solve the overflow
 			    if (!res) return false;		//return false when we can't solve
             }
+			if(b->count4>threshold){
+				if(b->count4>b->count5*threshold2){	//情形1：超出两个阈值，entry4取代entry5
+					h1 = (bobhash[0]->run(b->str, strlen(b->str))); //% bucket_num;
+					char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
+					b->fingerprint[3] = fp;
+					strcpy(b->str,key);
+					int tmp = b->count4;
+					b->count4 = (uint16_t)b->count5;
+					b->count5 = tmp;
+				}else{	//情形2：只超出1个阈值，entry4寻找候选桶的enter5
+					h1 = (bobhash[0]->run(key, strlen(key))); //% bucket_num;
+					char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
+					h2 = (h1 ^ (bobhash[0]->run((const char*)&fp, 1))); //% bucket_num;		
+					uint hash[2] = {h1%bucket_num, h2%bucket_num};
+					uint hashh[2] = {h1, h2};
+					for(int i=0;i<2;i++){
+						if(bucket[i][hash[i]].fingerprint[3]==fp){	//找到原桶·
+							if(b->count4>bucket[1-i][hash[1-i]].count5*threshold2){
+								//候选通entry5信息丢失?
+								strcpy(bucket[1-i][hash[1-i]].str,key);
+								bucket[1-i][hash[1-i]].count5 = b->count4;
+								b->fingerprint[3] = NULL;
+								b->count4 = 0;
+							}
+						}
+					}
+
+				}
+			}
+			
         }
 		else if (j == 5){
             b->count5++;
@@ -186,7 +224,7 @@ public:
 			bucket[1-i][rehash].count4 = (uint16_t)count;
 		}
 		else if (bucket[1-i][rehash].str == NULL && count < 0xffffffff) {
-			bucket[1-i][rehash].str = key;
+			strcpy(bucket[1-i][rehash].str,key);
 			bucket[1-i][rehash].count5 = (uint32_t)count;
 		}
 		else if (loop > 0) {	//if we can't find empty entry
@@ -212,7 +250,7 @@ public:
 			else{
 				uint32_t tmpcount = bucket[1-i][rehash].count5;
 				kickout(loop, 1-i, &bucket[1-i][rehash], tmpcount, rehashh, 5,key);
-				bucket[1-i][rehash].str = key;
+				strcpy(bucket[1-i][rehash].str,key);
 				bucket[1-i][rehash].count5 = (uint32_t)count;
 			}
 		}
@@ -252,7 +290,7 @@ public:
 				bucket[1-i][rehash].count4 = 0xf;
 			}
 			else if (bucket[1-i][rehash].str == NULL) {
-				bucket[1-i][rehash].str = key;
+				strcpy(bucket[1-i][rehash].str,key);
 				bucket[1-i][rehash].count5 = 0xf;
 			}
 			else if (bucket[1-i][rehash].count3 < 0xf) {
@@ -267,7 +305,7 @@ public:
 			}
 			else if (bucket[1-i][rehash].count5 < 0xf) {
 				kickout(maxloop, 1-i, &bucket[1-i][rehash], bucket[1-i][rehash].count5, rehashh, 5,key);
-				bucket[1-i][rehash].str = key;
+				strcpy(bucket[1-i][rehash].str,key);
 				bucket[1-i][rehash].count5 = 0xf;
 			}
 			else return;
@@ -280,7 +318,7 @@ public:
 				bucket[1-i][rehash].count4 = 0xff;
 			}
 			else if (bucket[1-i][rehash].str == NULL) {
-				bucket[1-i][rehash].str = key;
+				strcpy(bucket[1-i][rehash].str,key);
 				bucket[1-i][rehash].count5 = 0xff;
 			}
 			else if (bucket[1-i][rehash].count4 < 0xff) {
@@ -290,7 +328,7 @@ public:
 			}
 			else if (bucket[1-i][rehash].count5 < 0xff) {
 				kickout(maxloop, 1-i, &bucket[1-i][rehash], bucket[1-i][rehash].count5, rehashh, 5,key);
-				bucket[1-i][rehash].str = key;
+				strcpy(bucket[1-i][rehash].str,key);
 				bucket[1-i][rehash].count5 = 0xff;
 			}
 			else return;
@@ -298,12 +336,12 @@ public:
 		}
 		else if (j == 4) {			//entry4 overflow
 			if (bucket[1-i][rehash].str == NULL) {
-				bucket[1-i][rehash].str = key;
+				strcpy(bucket[1-i][rehash].str,key);
 				bucket[1-i][rehash].count5 = 0xffff;
 			}
 			else if (bucket[1-i][rehash].count5 < 0xffff) {
 				kickout(maxloop, 1-i, &bucket[1-i][rehash], bucket[1-i][rehash].count5, rehashh, 5,key);
-				bucket[1-i][rehash].str = key;
+				strcpy(bucket[1-i][rehash].str,key);
 				bucket[1-i][rehash].count5 = 0xffff;
 			}
 			else return;
@@ -314,6 +352,15 @@ public:
 
 	
 	void Insert(const char *key) {
+		// for(int i=0;i<2;i++){
+		// 	for(int j=0;j<bucket_num;j++){
+		// 		if(strcmp(bucket[i][j].str,key)==0){
+		// 			bucket[i][j].count5++;
+		// 			return;
+		// 		}
+		// 	}
+		// }
+
         maxloop = 1;		
 		//char fp = (char)((int)*key ^ ((int)*key >> 8) ^ ((int)*key >> 16) ^ ((int)*key >> 24));
 		h1 = (bobhash[0]->run(key, strlen(key))); //% bucket_num;
@@ -338,7 +385,7 @@ public:
 			}
 		}	
 		for (int i=0; i<2; i++) {
-			if (bucket[i][hash[i]].str == key ) {
+			if (strcmp(bucket[i][hash[i]].str,key)==0 ) {
 				bool res = plus(&bucket[i][hash[i]], 5,key);
 				if (!res) kickoverflow(i, &bucket[i][hash[i]], hashh[i], 5,key);
 				return;
@@ -356,7 +403,7 @@ public:
 				plus(&bucket[ii][hash[ii]], jj,key);
 				return;
 			}else{
-				bucket[ii][hash[ii]].str = key;
+				strcpy(bucket[ii][hash[ii]].str,key);
 				plus(&bucket[ii][hash[ii]], jj,key);
 				return;
 			}
@@ -408,7 +455,7 @@ public:
 			}
 		}
 		for (int i=0; i<2; i++) {
-			if (bucket[i][hash[i]].str == key ) {
+			if (strcmp(bucket[i][hash[i]].str,key)==0 ) {
 				int tmp = query(&bucket[i][hash[i]], 5);
                 return tmp;
 			}
