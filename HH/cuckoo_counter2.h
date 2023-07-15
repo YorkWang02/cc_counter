@@ -101,6 +101,94 @@ public:
 		}
 		return true;					//when entry4 overflows, we just ignore it
 	}
+
+	// 辅助函数，用于交换数组中两个元素的位置
+	template <typename T>
+	void swap(T arr[], int i, int j) {
+		T temp = arr[i];
+		arr[i] = arr[j];
+		arr[j] = temp;
+	}
+
+	// 快速排序的分区函数，返回分区点的索引
+	template <typename T1, typename T2>
+	int partition(T1 key[], T2 value[], int low, int high) {
+		T2 pivot = value[high]; // 将最后一个元素作为基准值
+		int i = low - 1; // i 指向小于基准值的元素
+
+		for (int j = low; j <= high - 1; j++) {
+			// 如果当前元素大于等于基准值，则交换元素位置
+			if (value[j] >= pivot) {
+				i++;
+				swap(key, i, j);
+				swap(value, i, j);
+			}
+		}
+
+		// 将基准值放到正确的位置上
+		swap(key, i + 1, high);
+		swap(value, i + 1, high);
+
+		return (i + 1); // 返回基准值的索引
+	}
+
+	// 快速排序的递归函数
+	template <typename T1, typename T2>
+	void quickSort(T1 key[], T2 value[], int low, int high) {
+		if (low < high) {
+			// 对数组进行分区，获取基准值的索引
+			int pivotIndex = partition(key, value, low, high);
+
+			// 递归地对基准值左边的子数组进行快速排序
+			quickSort(key, value, low, pivotIndex - 1);
+
+			// 递归地对基准值右边的子数组进行快速排序
+			quickSort(key, value, pivotIndex + 1, high);
+		}
+	}
+
+	// 快速排序的入口函数
+	template <typename T1, typename T2>
+	void quickSort(T1 key[], T2 value[], int size) {
+		quickSort(key, value, 0, size - 1);
+	}
+
+
+	int insert_heap(const char *key,int value){
+		for(int i=0;i<pointer;i++){	
+			if(strcmp(items[i], key) == 0){	//已经存在
+				count[i]+= value;
+				quickSort(items,count,MIN_HEAP_SIZE);
+				return 0;
+			}
+		}
+		if(pointer<MIN_HEAP_SIZE-1){	//有空位
+			strcpy(items[pointer], key);
+			count[pointer] = value;
+			pointer++;
+			quickSort(items,count,MIN_HEAP_SIZE);
+		}else{	//没空位
+			if(value>count[pointer]){
+				// char *old_item = new char[100];
+				// strcpy(old_item,items[pointer]);
+				// int old_count = count[pointer];
+
+				strcpy(items[pointer], key);
+				count[pointer] = value;
+				quickSort(items,count,MIN_HEAP_SIZE);
+
+				// for(int i=0;i<old_count;i++){
+				// 	Insert(old_item);
+				// }
+
+			}else{
+				return -1;
+			}
+			
+		}
+		return 0;
+	}
+
 	
 	bool plus(bucket_t* b, int j,const char *key) {		//try to plus entry_j in the bucket
 										//return true if no overflow happens
@@ -128,10 +216,7 @@ public:
 		else if (j == 4){
             int tmp = ++b->count4;
             if(tmp>=threshold){
-                if(pointer < MIN_HEAP_SIZE){
-			        strcpy(items[pointer], key);
-			        count[pointer] = tmp;
-                    pointer++;
+                if(insert_heap(key,tmp/threshold)!=-1){
                     b->fingerprint[j-1] = NULL; 
 					b->count4 = 0;
                 }
@@ -244,10 +329,6 @@ public:
 		}
 		b->fingerprint[j-1] = NULL;
 	}
-
-	void decay(const char *key){
-		
-	}
 	
 	void Insert(const char *key) {
         maxloop = 1;		
@@ -328,7 +409,7 @@ public:
 					int tmp = query(&bucket[i][hash[i]], j);
 					// printf("test:tmp+sum:%d\n",tmp+sum);
 					// return sum==0?tmp:sum+tmp;
-					return tmp+sum;
+					return tmp+sum*threshold;
 				}
 					
 				if (!flag && bucket[i][hash[i]].fingerprint[j-1] == NULL)
@@ -339,7 +420,7 @@ public:
 			// printf("test:flag=1\n");
 			// return sum==0?0:sum;
 			// printf("test:sum:%d\n",sum);
-			return sum;
+			return sum*threshold;
 		} 
 		int min1=min(bucket[0][hash[0]].count12&0xf, bucket[1][hash[1]].count12&0xf);
 		int min2=(min(bucket[0][hash[0]].count12&0xf0, bucket[1][hash[1]].count12&0xf0))>>4;
