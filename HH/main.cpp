@@ -222,7 +222,7 @@ int main(int argc, char** argv)
     clock_gettime(CLOCK_MONOTONIC, &time1);
         for (int t = 0; t < testcycles; t++)
         {
-                cccounter3 = new CCCounter3(memory * 1000 *1000/16);
+                cccounter3 = new CCCounter3(memory * 1000 *1000/16,package_num*hh);
 		for (int i = 0; i < package_num; i++)
                 {
                         cccounter3->Insert(insert[i]);
