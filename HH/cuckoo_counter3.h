@@ -25,8 +25,9 @@ private:
 	
 	};
 	uint bucket_num, maxloop, h1, h2;	//bucket_num indicates the number of buckets in each array
-    uint32_t threshold;		//阈值一
+    uint32_t threshold;		//阈值一：热流阈值
 	double threshold2;		//阈值二：比例系数
+	uint32_t threshold3;	//阈值三：评估entry5的大小
 	bucket_t *bucket[2];		//two arrays
 	BOBHash * bobhash[2];		//Bob hash function
 
@@ -34,7 +35,8 @@ public:
 	CCCounter3(uint _bucket,int value) {
 		bucket_num = _bucket;
 		threshold = value;
-		threshold2 = 0.5;
+		threshold2 = 0.2;
+		threshold3 = 1000;
 		for (int i = 0; i < 2; i++) {
 			bobhash[i] = new BOBHash(i + 1000);
 		}
@@ -162,36 +164,42 @@ public:
                 bool res = overflow(b, j,key);	//solve the overflow
 			    if (!res) return false;		//return false when we can't solve
             }
-			if(b->count4>threshold){
-				if(b->count4>b->count5*threshold2){	//情形1：超出两个阈值，entry4取代entry5
-					h1 = (bobhash[0]->run(b->str, strlen(b->str))); //% bucket_num;
-					char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
-					b->fingerprint[3] = fp;
-					strcpy(b->str,key);
-					int tmp = b->count4;
-					b->count4 = (uint16_t)b->count5;
-					b->count5 = tmp;
-				}else{	//情形2：只超出1个阈值，entry4寻找候选桶的enter5
-					h1 = (bobhash[0]->run(key, strlen(key))); //% bucket_num;
-					char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
-					h2 = (h1 ^ (bobhash[0]->run((const char*)&fp, 1))); //% bucket_num;		
-					uint hash[2] = {h1%bucket_num, h2%bucket_num};
-					uint hashh[2] = {h1, h2};
-					for(int i=0;i<2;i++){
-						if(bucket[i][hash[i]].fingerprint[3]==fp){	//找到原桶·
-							if(b->count4>bucket[1-i][hash[1-i]].count5*threshold2){
-								//候选通entry5信息丢失?
-								strcpy(bucket[1-i][hash[1-i]].str,key);
-								bucket[1-i][hash[1-i]].count5 = b->count4;
-								b->fingerprint[3] = NULL;
-								b->count4 = 0;
+			if(b->count4>threshold){	//entry4大于阈值1,判定为热流
+				if(b->count5<threshold3){	//情形1：entry5较小，此时比例系数为1，直接比较是否替换
+					if(b->count4>b->count5){	//情形1.1：entry4大于entry5,替换。反之不替换
+						h1 = (bobhash[0]->run(b->str, strlen(b->str))); //% bucket_num;
+						char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
+						b->fingerprint[3] = fp;
+						strcpy(b->str,key);
+						int tmp = b->count4;
+						b->count4 = (uint16_t)b->count5;
+						b->count5 = tmp;
+					}	
+				}else{	//情形2：entry5较大，此时entry4较难超过entry5,更改比例系数来提升entry5使用率
+					if(b->count4>b->count5*threshold2){
+						h1 = (bobhash[0]->run(key, strlen(key))); //% bucket_num;
+						char fp = (char)(h1 ^ (h1 >> 8) ^ (h1 >> 16) ^ (h1 >> 24));
+						h2 = (h1 ^ (bobhash[0]->run((const char*)&fp, 1))); //% bucket_num;		
+						uint hash[2] = {h1%bucket_num, h2%bucket_num};
+						uint hashh[2] = {h1, h2};
+						for(int i=0;i<2;i++){
+							if(bucket[i][hash[i]].fingerprint[3]==fp){	//找到原桶·
+								if(b->count4>bucket[1-i][hash[1-i]].count5){
+									int h = (bobhash[0]->run(bucket[1-i][hash[1-i]].str, strlen(bucket[1-i][hash[1-i]].str))); //% bucket_num;
+									char fp = (char)(h ^ (h >> 8) ^ (h >> 16) ^ (h >> 24));
+									uint32_t tmp = bucket[1-i][hash[1-i]].count5;
+									strcpy(bucket[1-i][hash[1-i]].str,key);
+									bucket[1-i][hash[1-i]].count5 = b->count4;
+									b->fingerprint[3] = NULL;
+									b->count4 = 0;
+									bucket[1-i][hash[1-i]].count4 = (uint16_t)tmp;
+									bucket[1-i][hash[1-i]].fingerprint[3] = fp;
+								}
 							}
 						}
 					}
-
 				}
-			}
-			
+			}	
         }
 		else if (j == 5){
             b->count5++;
