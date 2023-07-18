@@ -20,6 +20,7 @@
 #include "MVSketch.h"
 #include "NitroSketch.h"
 #include "ElasticSketch.h"
+#include "cuckoo_counter2.h"
 
 using namespace std;
 map <string ,int> B,C;
@@ -54,6 +55,10 @@ int main(int argc, char** argv)
     int cc_M;
     for (cc_M = 1; 32 * cc_M*CC_d + 432 * K <= MEM * 1000 * 8; cc_M++); if (cc_M % 2 == 0) cc_M--;
     cuckoocounter *cc; cc = new cuckoocounter(cc_M, K, 3, 0.01); cc->clear();
+
+    int cc2_M;
+    for (cc2_M = 1; 32 * cc_M*CC_d + 48 * K <= MEM * 1000 * 8; cc2_M++); if (cc2_M % 2 == 0) cc2_M--;
+    CCCounter2 *cc2; cc2 = new CCCounter2(cc_M, K, 500);
 	
     // preparing heavykeeper
     int hk_M;
@@ -118,6 +123,15 @@ int main(int argc, char** argv)
 	resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
 	double throughput_cc = (double)1000.0  * m/ resns;
 	printf("throughput of CC (insert): %.6lf Mips\n", throughput_cc);
+    //CC2
+	clock_gettime(CLOCK_MONOTONIC, &time1);
+	for (int i = 1; i <= m; i++) {
+		cc2->Insert(s[i]);
+	}
+	clock_gettime(CLOCK_MONOTONIC, &time2);
+	resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
+	double throughput_cc2 = (double)1000.0  * m/ resns;
+	printf("throughput of CC2 (insert): %.6lf Mips\n", throughput_cc2);
 
 	//HK
 	clock_gettime(CLOCK_MONOTONIC, &time1);
@@ -221,6 +235,15 @@ int main(int argc, char** argv)
 		if (C[cc_string]) cc_sum++;
 	}
 
+    int cc2_sum = 0, cc2_AAE = 0; double cc2_ARE = 0;
+	string cc2_string; int cc2_num;
+	for (int i = 0; i < K; i++)
+	{
+		cc2_string = (cc2->Query(i)).first; cc2_num = (cc2->Query(i)).second;
+		cc2_AAE += abs(B[cc2_string] - cc2_num); cc2_ARE += abs(B[cc2_string] - cc2_num) / (B[cc2_string] + 0.0);
+		if (C[cc2_string]) cc2_sum++;
+	}
+
     int hk_sum=0,hk_AAE=0; double hk_ARE=0;
     string hk_string; int hk_num;
     for (int i=0; i<K; i++)
@@ -285,6 +308,7 @@ int main(int argc, char** argv)
     }   
 
     printf("cuckoocounter:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",cc_sum,K,(cc_sum/(K + 0.0)),cc_ARE/K,cc_AAE/(K + 0.0));   
+    printf("cuckoocounter2:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",cc2_sum,K,(cc2_sum/(K + 0.0)),cc2_ARE/K,cc2_AAE/(K + 0.0));   
     printf("heavkeeper:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",hk_sum,K,(hk_sum/(K+0.0)),hk_ARE/K,hk_AAE/(K+0.0));
     printf("LossyCounting:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",LC_sum,K,(LC_sum/(K+0.0)),LC_ARE/K,LC_AAE/(K+0.0));
     printf("spacesaving:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",ss_sum,K,(ss_sum/(K+0.0)),ss_ARE/K,ss_AAE/(K+0.0));
