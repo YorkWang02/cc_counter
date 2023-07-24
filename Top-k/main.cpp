@@ -21,6 +21,7 @@
 #include "NitroSketch.h"
 #include "ElasticSketch.h"
 #include "cuckoo_counter2.h"
+#include "cuckoo_counter3.h"
 
 using namespace std;
 map <string ,int> B,C;
@@ -59,6 +60,10 @@ int main(int argc, char** argv)
     int cc2_M;
     for (cc2_M = 1; 32 * cc_M*CC_d + 48 * K <= MEM * 1000 * 8; cc2_M++); if (cc2_M % 2 == 0) cc2_M--;
     CCCounter2 *cc2; cc2 = new CCCounter2(cc_M, K, 500);
+
+    int cc3_M;
+    for (cc3_M = 1; 64 * cc_M*CC_d <= MEM * 1000 * 8; cc3_M++); if (cc3_M % 2 == 0) cc3_M--;
+    CCCounter3 *cc3; cc3 = new CCCounter3(cc_M, 500);
 	
     // preparing heavykeeper
     int hk_M;
@@ -133,6 +138,17 @@ int main(int argc, char** argv)
 	double throughput_cc2 = (double)1000.0  * m/ resns;
 	printf("throughput of CC2 (insert): %.6lf Mips\n", throughput_cc2);
 
+    //CC3
+	clock_gettime(CLOCK_MONOTONIC, &time1);
+	for (int i = 1; i <= m; i++) {
+		cc3->Insert(s[i]);
+	}
+	clock_gettime(CLOCK_MONOTONIC, &time2);
+	resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
+	double throughput_cc3 = (double)1000.0  * m/ resns;
+	printf("throughput of CC3 (insert): %.6lf Mips\n", throughput_cc3);
+
+
 	//HK
 	clock_gettime(CLOCK_MONOTONIC, &time1);
 	for (int i = 1; i <= m; i++) {
@@ -204,6 +220,7 @@ int main(int argc, char** argv)
 	printf("throughput of ElasticSketch (insert): %.6lf Mips\n", throughput_es);
 
 	cc->work();
+    cc3->work();
 	hk->work();
 	ss->work();
 	LC->work();
@@ -242,6 +259,15 @@ int main(int argc, char** argv)
 		cc2_string = (cc2->Query(i)).first; cc2_num = (cc2->Query(i)).second;
 		cc2_AAE += abs(B[cc2_string] - cc2_num); cc2_ARE += abs(B[cc2_string] - cc2_num) / (B[cc2_string] + 0.0);
 		if (C[cc2_string]) cc2_sum++;
+	}
+
+    int cc3_sum = 0, cc3_AAE = 0; double cc3_ARE = 0;
+	string cc3_string; int cc3_num;
+	for (int i = 0; i < K; i++)
+	{
+		cc3_string = (cc3->Query(i)).first; cc3_num = (cc3->Query(i)).second;
+		cc3_AAE += abs(B[cc3_string] - cc3_num); cc3_ARE += abs(B[cc3_string] - cc3_num) / (B[cc3_string] + 0.0);
+		if (C[cc3_string]) cc3_sum++;
 	}
 
     int hk_sum=0,hk_AAE=0; double hk_ARE=0;
@@ -308,7 +334,8 @@ int main(int argc, char** argv)
     }   
 
     printf("cuckoocounter:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",cc_sum,K,(cc_sum/(K + 0.0)),cc_ARE/K,cc_AAE/(K + 0.0));   
-    printf("cuckoocounter2:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",cc2_sum,K,(cc2_sum/(K + 0.0)),cc2_ARE/K,cc2_AAE/(K + 0.0));   
+    printf("cuckoocounter2:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",cc2_sum,K,(cc2_sum/(K + 0.0)),cc2_ARE/K,cc2_AAE/(K + 0.0));  
+    printf("cuckoocounter3:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",cc3_sum,K,(cc3_sum/(K + 0.0)),cc3_ARE/K,cc3_AAE/(K + 0.0));   
     printf("heavkeeper:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",hk_sum,K,(hk_sum/(K+0.0)),hk_ARE/K,hk_AAE/(K+0.0));
     printf("LossyCounting:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",LC_sum,K,(LC_sum/(K+0.0)),LC_ARE/K,LC_AAE/(K+0.0));
     printf("spacesaving:\nAccepted: %d/%d  %.10f\nARE: %.10f\nAAE: %.10f\n\n",ss_sum,K,(ss_sum/(K+0.0)),ss_ARE/K,ss_AAE/(K+0.0));
