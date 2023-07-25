@@ -36,7 +36,7 @@ public:
 		bucket_num = _bucket;
 		threshold = value;
 		threshold2 = 0.2;
-		threshold3 = 1000;
+		threshold3 = 2*threshold;
 		for (int i = 0; i < 2; i++) {
 			bobhash[i] = new BOBHash64(i + 1000);
 		}
