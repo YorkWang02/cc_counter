@@ -384,7 +384,7 @@ public:
 	{
 		string str;
 		str.assign(items[k]);
-		return make_pair(str,count[k]);
+		return make_pair(str,count[k]*threshold);
 	}
 	
 	
