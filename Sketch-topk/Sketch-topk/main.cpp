@@ -25,6 +25,7 @@
 #include "CMSketch.h"
 #include "HyperUss.h"
 #include "WavingSketch.h"
+#include "DASketch.h"
 
 
 using namespace std;
@@ -115,15 +116,18 @@ int main(int argc, char** argv)
 
         // preparing uss
     int HU_M;
-    for (HU_M=1; 32*HU_M*HU_d+432*K<=MEM*1024*8; HU_M++);
+    for (HU_M=1; 32*HU_M*HU_d<=MEM*1024*8; HU_M++);
     func.push_back(new hyperuss(HU_M, K));
 
     // preparing WavingSketch
     int WS_M;
-    for (WS_M=1; 32*WS_M*(WS_d+1)+432*K<=MEM*1024*8; WS_M++);
+    for (WS_M=1; 32*WS_M*(WS_d+1)<=MEM*1024*8; WS_M++);if (WS_M%2==0) WS_M--;
     func.push_back(new wavingsketch(WS_M, K));
 
-// preparing Double-Anonymous Sketch
+    // preparing Double-Anonymous Sketch
+    int DA_M;
+    for (DA_M=1; 32*DA_M*TOP_d+32*DA_M*CMM_d<=MEM*1024*8; DA_M++);if (DA_M%2==0) DA_M--;
+    func.push_back(new dasketch(DA_M, K));
 
     // preparing heavykeeper
     int hk_M;

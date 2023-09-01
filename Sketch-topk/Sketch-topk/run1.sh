@@ -1,13 +1,12 @@
 rm result.csv
 make
-echo "MEM,func,k,AAE,ARE,_sum,throughput" >> result.csv
-ruleDir='/home/york/dataset/data/1.dat'
-
-for MEM in $(seq 100 100 1000)
+echo "MEM,func,k,AAE,ARE,throughput" >> result.csv
+ruleDir='/home/york/dataset/zipf'
+for MEM in $(seq 100 50 500)
 do
-    for K in 10 50 $(seq 100 100 1000)
+    for file in $ruleDir/*.dat
     do
-        cmd="./cuckoo -d $ruleDir -m $MEM -k $K"
+        cmd="./cuckoo -d $file -m $MEM -k 1000"
         echo $cmd
         eval $cmd
         pid = $!

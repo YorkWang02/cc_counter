@@ -20,7 +20,7 @@ private:
 	ssummary *ss;
 	struct node { int C; } HK[CM_d][MAX_MEM+10];
 	BOBHash64 * bobhash;
-	int K, M2, d;
+	int K, M2;
 public:
 	cmsketch(int M2, int K) :M2(M2), K(K) { ss = new ssummary(K); ss->clear(); bobhash = new BOBHash64(1005); }
 	void clear()
