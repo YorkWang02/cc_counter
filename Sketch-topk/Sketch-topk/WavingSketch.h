@@ -63,9 +63,10 @@ public:
                     }
                 }
                 if (WS[hash].count * sign >= min_freq) {
-                    if (WS[hash].heavy[min_pos].flag) WS[hash].count += min_freq * ((Hash(WS[hash].heavy[min_pos].ID) & 1) ? 1 : -1);
+                    string temp = WS[hash].heavy[min_pos].ID;
                     WS[hash].heavy[min_pos].ID = x;
-                    WS[hash].heavy[min_pos].freq = min_freq + 1;
+                    WS[hash].heavy[min_pos].freq = WS[hash].count * sign + 1;
+                    if (WS[hash].heavy[min_pos].flag) WS[hash].count += min_freq * ((Hash(temp) & 1) ? 1 : -1);
                     WS[hash].heavy[min_pos].flag = false;
                 }
                 WS[hash].count += sign;
