@@ -18,6 +18,8 @@
 #include "spacesaving.h"
 #include "LossyCounting.h"
 #include "CuckooCounter.h"
+#include "CuckooCounter2.h"
+#include "CuckooCounter3.h"
 #include "ASketch.h"
 #include "MVSketch.h"
 #include "NitroSketch.h"
@@ -98,11 +100,23 @@ int main(int argc, char** argv)
     // for (A_M=1; 16*A_M*2+432*K<=MEM*1024*8; A_M++);
     // func.push_back(new ASketch(A_M,K));
 
-    // preparing cuckoocounter:184
-    // int cc_M;
-    // for (cc_M = 1; 64 * cc_M*CC_d + 432 * K <= MEM * 1000 * 8; cc_M++); if (cc_M % 2 == 0) cc_M--;
-    // std::cout << cc_M << std::endl;
-    // func.push_back(new cuckoocounter(cc_M, K, 3, 0.01));
+    //preparing cuckoocounter:184
+    int cc_M;
+    for (cc_M = 1; 64 * cc_M*CC_d + 432 * K <= MEM * 1000 * 8; cc_M++); if (cc_M % 2 == 0) cc_M--;
+    std::cout << cc_M << std::endl;
+    func.push_back(new cuckoocounter(cc_M, K, 3, 0.01));
+
+    // preparing cuckoocounter2
+    int cc2_M;
+    for (cc2_M = 1; 64 * cc2_M*CC_d + 64 * K <= MEM * 1000 * 8; cc2_M++); if (cc2_M % 2 == 0) cc2_M--;
+    std::cout << cc2_M << std::endl;
+    func.push_back(new cuckoocounter2(cc2_M, K, 3, 0.01));
+
+    // preparing cuckoocounter3
+    int cc3_M;
+    for (cc3_M = 1; 128 * cc3_M*CC_d  <= MEM * 1000 * 8; cc3_M++); if (cc3_M % 2 == 0) cc3_M--;
+    std::cout << cc3_M << std::endl;
+    func.push_back(new cuckoocounter3(cc3_M, K,0.2,100,200));
 
     // preparing ElasticSketch
     // int ES_M;
@@ -149,6 +163,7 @@ int main(int argc, char** argv)
     int ss_M;
     for (ss_M=1; 432*ss_M<=MEM*1024*8; ss_M++);
     func.push_back(new spacesaving(ss_M, K));
+
 
     // prepare clear
     for (auto &iter : func) {
