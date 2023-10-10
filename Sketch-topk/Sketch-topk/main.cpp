@@ -20,6 +20,7 @@
 #include "CuckooCounter.h"
 #include "CuckooCounter2.h"
 #include "CuckooCounter3.h"
+#include "CuckooCounter31.h"
 #include "ASketch.h"
 #include "MVSketch.h"
 #include "NitroSketch.h"
@@ -100,69 +101,75 @@ int main(int argc, char** argv)
     // for (A_M=1; 16*A_M*2+432*K<=MEM*1024*8; A_M++);
     // func.push_back(new ASketch(A_M,K));
 
-    //preparing cuckoocounter:184
+    // //preparing cuckoocounter:184
     int cc_M;
     for (cc_M = 1; 64 * cc_M*CC_d + 432 * K <= MEM * 1000 * 8; cc_M++); if (cc_M % 2 == 0) cc_M--;
     std::cout << cc_M << std::endl;
     func.push_back(new cuckoocounter(cc_M, K, 3, 0.01));
 
-    // preparing cuckoocounter2
-    int cc2_M;
-    for (cc2_M = 1; 64 * cc2_M*CC_d + 64 * K <= MEM * 1000 * 8; cc2_M++); if (cc2_M % 2 == 0) cc2_M--;
-    std::cout << cc2_M << std::endl;
-    func.push_back(new cuckoocounter2(cc2_M, K, 3, 0.01));
+    // // // // preparing cuckoocounter2
+    // int cc2_M;
+    // for (cc2_M = 1; 64 * cc2_M*CC_d + 64 * K <= MEM * 1000 * 8; cc2_M++); if (cc2_M % 2 == 0) cc2_M--;
+    // std::cout << cc2_M << std::endl;
+    // func.push_back(new cuckoocounter2(cc2_M, K, 3, 0.01));
 
-    // preparing cuckoocounter3
+    // // preparing cuckoocounter3
     int cc3_M;
     for (cc3_M = 1; 128 * cc3_M*CC_d  <= MEM * 1000 * 8; cc3_M++); if (cc3_M % 2 == 0) cc3_M--;
     std::cout << cc3_M << std::endl;
-    func.push_back(new cuckoocounter3(cc3_M, K,0.2,100,200));
+    func.push_back(new cuckoocounter3(cc3_M, K,0.4,10000,25000));
 
-    // preparing ElasticSketch
-    // int ES_M;
-    // for (ES_M=1; 32*4*ES_M+32*ES_M+432*K<=MEM*1024*8; ES_M++);
-    // func.push_back(new elasticsketch(ES_M, ES_M/ES_d, K));
+    // // // preparing cuckoocounter31
+    // int cc31_M;
+    // for (cc31_M = 1; 128 * cc31_M*CC_d  <= MEM * 1000 * 8; cc31_M++); if (cc31_M % 2 == 0) cc31_M--;
+    // std::cout << cc31_M << std::endl;
+    // func.push_back(new cuckoocounter31(cc31_M, K,1000));
 
-    // preparing cm sketch
-    int CM_M;
-    for (CM_M=1; 32*CM_M*CM_d+432*K<=MEM*1024*8; CM_M++);
-    func.push_back(new cmsketch(CM_M, K));
+    // // preparing ElasticSketch
+    // // int ES_M;
+    // // for (ES_M=1; 32*4*ES_M+32*ES_M+432*K<=MEM*1024*8; ES_M++);
+    // // func.push_back(new elasticsketch(ES_M, ES_M/ES_d, K));
 
-        // preparing uss
-    int HU_M;
-    for (HU_M=1; 32*HU_M*HU_d<=MEM*1024*8; HU_M++);
-    func.push_back(new hyperuss(HU_M, K));
+    // // preparing cm sketch
+    // int CM_M;
+    // for (CM_M=1; 32*CM_M*CM_d+432*K<=MEM*1024*8; CM_M++);
+    // func.push_back(new cmsketch(CM_M, K));
 
-    // preparing WavingSketch
-    int WS_M;
-    for (WS_M=1; 32*WS_M*(WS_d+1)<=MEM*1024*8; WS_M++);if (WS_M%2==0) WS_M--;
-    func.push_back(new wavingsketch(WS_M, K));
+    //     // preparing uss
+    // int HU_M;
+    // for (HU_M=1; 32*HU_M*HU_d<=MEM*1024*8; HU_M++);
+    // func.push_back(new hyperuss(HU_M, K));
 
-    // preparing Double-Anonymous Sketch
-    int DA_M;
-    for (DA_M=1; 32*DA_M*TOP_d+32*DA_M*CMM_d<=MEM*1024*8; DA_M++);if (DA_M%2==0) DA_M--;
-    func.push_back(new dasketch(DA_M, K));
+    // // // preparing WavingSketch
+    // int WS_M;
+    // for (WS_M=1; 32*WS_M*(WS_d+1)<=MEM*1024*8; WS_M++);if (WS_M%2==0) WS_M--;
+    // func.push_back(new wavingsketch(WS_M, K));
 
-    // preparing heavykeeper
-    int hk_M;
-    for (hk_M=1; 32*hk_M*HK_d+432*K<=MEM*1024*8; hk_M++); if (hk_M%2==0) hk_M--;
-    func.push_back(new heavykeeper(hk_M, K));
+    // // // preparing Double-Anonymous Sketch
+    // int DA_M;
+    // for (DA_M=1; 32*DA_M*TOP_d+32*DA_M*CMM_d<=MEM*1024*8; DA_M++);if (DA_M%2==0) DA_M--;
+    // func.push_back(new dasketch(DA_M, K));
 
-    // // preparing LossyCounting
-     int LC_M;
-     for (LC_M=1; 227*LC_M<=MEM*1024*8; LC_M++);
-    func.push_back(new LossyCounting(K, LC_M));
+    // // preparing heavykeeper
+    // int hk_M;
+    // for (hk_M=1; 32*hk_M*HK_d+432*K<=MEM*1024*8; hk_M++); if (hk_M%2==0) hk_M--;
+    // func.push_back(new heavykeeper(hk_M, K));
 
-    // // preparing MVSketch
-    int MV_M;
-    for (MV_M=1; 32*MV_M*MV_d+432*K<=MEM*1024*8; MV_M++);
-    func.push_back(new mvsketch(MV_M, K));
+    // // // // preparing LossyCounting
+    //  int LC_M;
+    //  for (LC_M=1; 227*LC_M<=MEM*1024*8; LC_M++);
+    // func.push_back(new LossyCounting(K, LC_M));
+
+    // // // preparing MVSketch
+    // int MV_M;
+    // for (MV_M=1; 32*MV_M*MV_d+432*K<=MEM*1024*8; MV_M++);
+    // func.push_back(new mvsketch(MV_M, K));
 
 
-    // // preparing spacesaving
-    int ss_M;
-    for (ss_M=1; 432*ss_M<=MEM*1024*8; ss_M++);
-    func.push_back(new spacesaving(ss_M, K));
+    // // // // preparing spacesaving
+    // int ss_M;
+    // for (ss_M=1; 432*ss_M<=MEM*1024*8; ss_M++);
+    // func.push_back(new spacesaving(ss_M, K));
 
 
     // prepare clear

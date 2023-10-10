@@ -9,6 +9,19 @@ vscode 下载markdown preview enhanced插件再打开预览可生成目录
 ## 2023.10.6
 - 本周工作
   - 完善文档
+## 2023.10.13
+- 本周工作
+```
+  - 发布工作前的思考：
+  - cc2：下层概率衰减，设置热流阈值，上层spacesaving或无偏估计。因为下层概率衰减能够更快过滤掉小流，但会产生低估，上层spacesaving会产生高估，比较spacesaving和无偏估计的性能。
+  - cc2:count min log sketch思路：概率增加计数器来降低计数器位数，但是由于桶大小应该为64的倍数，可以考虑多设置条目。
+```
+  - cc3:我的理解是分为三层，分别为topk层，heavy part层，light part层。topk层替换策略为kickout,heavy part层替换策略为指数衰减，heavy part部分超出阈值会升到topk部分，heavy part没有空位时会指数衰减寻找为0的count，不会像cc一样kickout。
+- 问题
+  - 测量topk时是否有必要light part层？我参考了heavy guardian的思想，其topk版本丢弃了light part部分。而且我也不太理解light part的作用：heavy part指数衰减为0后不是直接被替换吗？什么叫做下放到light part？
+  - k值的选取是否不灵活？即因为桶的数量确定后能测量的k值也确定了，当k需求不大时是否“算力溢出”？k需求很大时又如何解决尾部无法测量到的问题？
+  - 阈值必须人工调试，还是很难确定。
+  - 上次实验我遇到的问题没有解决，导致我现在cc3和新版的结果都跑不出来？还没找到问题在哪里，很奇怪你上次怎么跑出来的。
 ---
 # sketch算法比较
 ## 全流频率估计
@@ -20,9 +33,14 @@ vscode 下载markdown preview enhanced插件再打开预览可生成目录
   ![](../images/CM%20sketch/1.PNG)
 - 插入算法：将元素通过多个hash函数映射到多个计数器，并将对应的计数器加一
 - 查询算法：选取多个计数器中的最小者
+- 时间复杂度
+  - 插入：因为计算每个hash函数花费O（1）常数时间，当哈希函数的数量为d时，时间复杂度为O（d）
+  - 查询：O（d）
 - 局限：
   1. 不适应真实网络流，其流的频率通常高度倾斜。因此，CM Sketch必须为每个计数器分配足够的位数，在实际场景中浪费了大量内存
   2. 由于哈希冲突，不同的流可能存储在相同的空间中，从而导致小流和大流之间的误分类，这导致小流的误差很高
+  3. 不支持流键的可逆性
+  4. 产生高估误差
 ### Conservative-Update Sketch
 - 参考文献
 >[Estan C, Varghese G. New directions in traffic measurement and accounting: Focusing on the elephants, ignoring the mice[J]. ACM Transactions on Computer Systems (TOCS), 2003, 21(3): 270-313.](../references/New%20Directions%20in%20Traffic%20Measurement%20and%20Accounting.pdf)

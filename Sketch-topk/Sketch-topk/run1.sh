@@ -1,8 +1,8 @@
-rm result.csv
+rm result_cc3_1.csv
 make
-echo "MEM,func,k,AAE,ARE,throughput" >> result.csv
-ruleDir='/home/york/dataset/zipf'
-for MEM in $(seq 100 50 500)
+echo "MEM,func,k,AAE,ARE,throughput" >> result_cc3_1.csv
+ruleDir='/home/york/dataset/temp'
+for MEM in $(seq 100 100 1000)
 do
     for file in $ruleDir/*.dat
     do

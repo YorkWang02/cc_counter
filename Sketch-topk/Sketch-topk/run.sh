@@ -10,7 +10,7 @@ do
         cmd="./cuckoo -d $ruleDir -m $MEM -k $K"
         echo $cmd
         eval $cmd
-        pid = $!
+        pid=$!
         wait $pid
         if ps -p $pid > /dev/null; then
             kill -9 $pid
