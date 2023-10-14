@@ -16,6 +16,8 @@
 
 #define N 34000000
 
+#define MIN_HEAP_SIZE 1024
+
 #define KEY_LEN 13
 
 typedef long long lint;

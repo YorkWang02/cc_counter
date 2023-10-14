@@ -131,19 +131,16 @@ public:
 	}
 	struct Node { string x; int y; int thre;} q[MAX_MEM + 10];
 	static int cmp(Node i, Node j) { return i.y > j.y; }
-	struct Node2 {int FP; int tmpFQ; int fnlFQ; } p[MAX_MEM + 10];
-	static int cmp2(Node2 i, Node2 j) { 
-		return i.FP < j.FP;
-	}
-	unordered_map<int, string> mp; //用于存储指纹和流id之间的映射关系
 	void work()
 	{
 		int CNT = 0;
 		for (int i = 0; i < CC_d; i++) {
-			for (int j = 0;j < M2;j++){
-				q[i].x = HK[i][j][BN-1].ID; 
-				q[i].y = HK[i][j][BN-1].C;
-				CNT++;
+			for (int j = 0;j < M2+5;j++){
+				if(HK[i][j][BN-1].C!=0){
+					q[i*(M2+5)+j].x = HK[i][j][BN-1].ID; 
+					q[i*(M2+5)+j].y = HK[i][j][BN-1].C;
+					CNT++;
+				}
 			}
 		}
 		sort(q, q + CNT, cmp);

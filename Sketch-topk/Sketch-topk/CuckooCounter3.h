@@ -31,10 +31,15 @@ public:
 	}
 	void clear()
 	{
-		for (int i = 0; i < CC_d; i++)
-			for (int j = 0; j <= M2 + 5; j++)
-				for(int r=0;r<BN;r++)
+		for (int i = 0; i < CC_d; i++){
+			for (int j = 0; j <= M2 + 5; j++){
+				for(int r=0;r<BN;r++){
 					HK[i][j][r].C = HK[i][j][r].FP = 0;
+					HK[i][j][r].ID = "\0";
+				}
+			}
+				
+		}		
 	}
 	unsigned long long Hash(string ST)
 	{
@@ -149,18 +154,14 @@ public:
 	}
 	struct Node { string x; int y; int thre;} q[MAX_MEM + 10];
 	static int cmp(Node i, Node j) { return i.y > j.y; }
-	struct Node2 {int FP; int tmpFQ; int fnlFQ; } p[MAX_MEM + 10];
-	static int cmp2(Node2 i, Node2 j) { 
-		return i.FP < j.FP;
-	}
-	unordered_map<int, string> mp; //用于存储指纹和流id之间的映射关系
+
 	void work()
 	{
 		int CNT = 0;
 		for (int i = 0; i < CC_d; i++) {
-			for (int j = 0;j < M2;j++){
-				q[i].x = HK[i][j][4].ID; 
-				q[i].y = HK[i][j][4].C;
+			for (int j = 0;j < M2+5;j++){
+				q[i*(M2+5)+j].x = HK[i][j][4].ID; 
+				q[i*(M2+5)+j].y = HK[i][j][4].C;
 				CNT++;
 			}
 		}
@@ -175,7 +176,7 @@ public:
 		}
 	}
 	std::string get_name() override {
-		return "CuckooCounter";
+		return "CuckooCounter3";
 	}
 };
 #endif
