@@ -19,9 +19,17 @@ vscode 下载markdown preview enhanced插件再打开预览可生成目录
   - cc3:我的理解是分为三层，分别为topk层，heavy part层，light part层。topk层替换策略为kickout,heavy part层替换策略为指数衰减，heavy part部分超出阈值会升到topk部分，heavy part没有空位时会指数衰减寻找为0的count，不会像cc一样kickout。
 - 问题
   - 测量topk时是否有必要light part层？我参考了heavy guardian的思想，其topk版本丢弃了light part部分。而且我也不太理解light part的作用：heavy part指数衰减为0后不是直接被替换吗？什么叫做下放到light part？
+    - 测量topk时无需light part层。
   - k值的选取是否不灵活？即因为桶的数量确定后能测量的k值也确定了，当k需求不大时是否“算力溢出”？k需求很大时又如何解决尾部无法测量到的问题？
+    - 不考虑极端情况
   - 阈值必须人工调试，还是很难确定。
+    - 暂不考虑阈值
   - 上次实验我遇到的问题没有解决，导致我现在cc3和新版的结果都跑不出来？还没找到问题在哪里，很奇怪你上次怎么跑出来的。
+- 实验相关
+  - 更新了freq下的cc3代码：其结构为三层。上层为topk,中层为heavy part，下层为light part.当元素插入时，先检查topk,如果匹配则直接增加计数器；否则检查heavy，如果匹配则直接增加计数器，否则如果有空位则插入空位，如果没有空位则指数衰减再看有没有空位，如果还没有空位则插入light（不理解什么叫entry12尾部下放？这里参考了heavy guardian思想）。
+    - 注意点：1.topk层采用了kick策略，但是其是专门用于存放topk的，所以就算插入元素时entry5为空也不能直接占用，也就是topk层只能从heavy层上升，其执行kick时相当于一个单entry的cuckoo filter。2.heavy层采用了指数衰减和kick策略。当元素冲突时采用指数衰减策略，当计数器溢出且桶内不能自适应时采用kick策略。3.light层就是一组计数器，由一个hash函数定位，参考heavy guardian我定为16个4位计数器。
+  - 更新了sketch-topk下的cc31代码：其为freq下cc3的简化版。移除了light层，同时和cc的简化版一样移除了桶内计数器位数自适应（即所有计数器都是相同位数）
+  - 就已运行的样本来看实验结果不理想，代码结构可能仍需优化。
 ---
 # sketch算法比较
 ## 全流频率估计
