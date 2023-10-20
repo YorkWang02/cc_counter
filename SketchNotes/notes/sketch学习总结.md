@@ -30,6 +30,15 @@ vscode 下载markdown preview enhanced插件再打开预览可生成目录
     - 注意点：1.topk层采用了kick策略，但是其是专门用于存放topk的，所以就算插入元素时entry5为空也不能直接占用，也就是topk层只能从heavy层上升，其执行kick时相当于一个单entry的cuckoo filter。2.heavy层采用了指数衰减和kick策略。当元素冲突时采用指数衰减策略，当计数器溢出且桶内不能自适应时采用kick策略。3.light层就是一组计数器，由一个hash函数定位，参考heavy guardian我定为16个4位计数器。
   - 更新了sketch-topk下的cc31代码：其为freq下cc3的简化版。移除了light层，同时和cc的简化版一样移除了桶内计数器位数自适应（即所有计数器都是相同位数）
   - 就已运行的样本来看实验结果不理想，代码结构可能仍需优化。
+## 2023.10.20
+- 本周工作：改代码，只修改了sketch-topk下的代码，因为其较精简，但效果仍不理想。
+  - cc3:按照理解一个Bucket五个entry,精简版本所有entry没有位数限制。entry1-4是有序的，其超出阈值会进入entry5。同时，当entry5有空位时也会占用entry5,不会出现其他entry满entry5空的情况。entry1-4 kick时可以进入任何entry，entry5kick时只能kick到entry5.
+  - 效果不理想，一下为一些无用的理解尝试：
+    - 有序参考了提供的代码cuckoosketch，但此版本下是否有必要？都尝试后因为效果都很差，感觉会影响性能，但无法改善。
+    - entry5 kick只能到entry5目的是为了让topk候选项尽量在entry5内流动，但如果有错误项进入entry5如何去除错误项？尝试entry5也可以kick到任何项，同样会影响性能，但无法改善。
+    - 因为这个基础版效果就很差，针对entry1-4的替换策略如无偏、概率衰减感觉影响不大，暂未考虑这些细节。
+  - cc31:因为cc3基础版性能太差，cc31完全仿照cc，只是把ssummary结构散列到了每个bucket，相当于每个bucket内部最多贡献一个候选topk。即cc是每插入一个元素需要比较ssummary，而cc31是每插入一个元素需要比较bucket内部的一个topk候选。我理解的cc3中的entry5就是这么个作用。
+  - 这个版本本意是和cc一对一比较更改看看是哪些部分影响了性能。但是最基础版的cc31性能相较于cc也差不少,而且和cc3差的各不相同，思路遇到瓶颈。
 ---
 # sketch算法比较
 ## 全流频率估计

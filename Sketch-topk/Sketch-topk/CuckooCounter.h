@@ -88,6 +88,7 @@ public:
 		
 		int hash[2] = { Hsh1, Hsh2 };
 		unsigned long long hashHH[2] = { H1, H2 };
+		// int testi,testj,testr,testflag=0;
 		
 		int ii, jj, mi=(1<<25);	
 		for(int i = 0; i < CC_d; i++)
@@ -102,6 +103,7 @@ public:
 						HK[i][hash[i]][j].C++;
 					maxv = max(maxv, HK[i][hash[i]][j].C);
 					count = 1;
+					// testflag = 1;testi = i;testj = hash[i];testr = j;
 					break;
 				}
 				if(HK[i][hash[i]][j].FP == 0)
@@ -115,16 +117,21 @@ public:
 			}
 
 		if (count == 0) {	//mean can not insert normally
+			// temp.FP = HK[ii][hash[ii]][jj].FP;
+			// temp.C = HK[ii][hash[ii]][jj].C;
 			HK[ii][hash[ii]][jj].FP = FP;
 			HK[ii][hash[ii]][jj].C = 1;
 			maxv=max(maxv, 1);
-		//	rehash(temp, max_loop, ii, hashHH[ii]);
+			// rehash(temp, max_loop, ii, hashHH[ii]);
 		}
 
 		if (!mon)
 		{
 			if (maxv - (ss->getmin()) == 1 || ss->tot < K)
 			{
+				// if(testflag ==1&&testi==0&&testj==1037){
+				// 	printf("test:i=%d,j=%d,r=%d\n",testi,testj,testr);
+				// }
 				int i = ss->getid();
 				ss->add2(ss->location(x), i);
 				ss->str[i] = x;
@@ -143,6 +150,9 @@ public:
 		else
 			if (maxv > ss->sum[p])
 			{
+				// if(testflag ==1&&testi==0&&testj==1037){
+				// 	printf("test:i=%d,j=%d,r=%d\n",testi,testj,testr);
+				// }
 				int tmp = ss->Left[ss->sum[p]];
 				ss->cut(p);
 				if (ss->head[ss->sum[p]]) tmp = ss->sum[p];

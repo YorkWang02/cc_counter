@@ -1,5 +1,6 @@
 #ifndef _cuckoocounter31_H
 #define _cuckoocounter31_H
+
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -8,126 +9,143 @@
 #include <string>
 #include <cstring>
 #include <unordered_map>
+
 #include "BaseSketch.h"
 #include "BOBHASH32.h"
 #include "params.h"
+#include "ssummary.h"
 #include "BOBHASH64.h"
-#define CC_d 2 
-#define CC_b 1.08 
-#define BN 5 
+#define CC_d 2
+#define BN 4
 #define rep(i,a,n) for(int i=a;i<=n;i++)
 using namespace std;
-class cuckoocounter31 : public sketch::BaseSketch{
+class cuckoocounter31 : public sketch::BaseSketch
+{
 private:
-	struct node { int C, FP; string ID; } HK[CC_d][MAX_MEM + 10][BN]; 
+	struct topk {int C; string ID; } heap[CC_d][MAX_MEM + 10];
+	struct node { int C, FP; } HK[CC_d][MAX_MEM + 10][BN];
 	BOBHash64 * bobhash;
 	int K, M2;
-	int hot_thresh; //热流阈值
+	int thresh;
+	double epsilon;
 public:
-	cuckoocounter31(int M2, int K, int h) :M2(M2), K(K), hot_thresh(h)
-	{ 
-		bobhash = new BOBHash64(1005); 
-	}
+	cuckoocounter31(int M2, int K, int t, double e) :M2(M2), K(K), thresh(t), epsilon(e)
+	{  bobhash = new BOBHash64(1005); }
 	void clear()
 	{
 		for (int i = 0; i < CC_d; i++)
 			for (int j = 0; j <= M2 + 5; j++)
-				for(int r=0;r<BN;r++)
-					HK[i][j][r].C = HK[i][j][r].FP = 0;
+				for(int r=0;r<BN;r++)HK[i][j][r].C = HK[i][j][r].FP = 0;
+		for (int i = 0; i < CC_d; i++)
+			for (int j = 0; j <= M2 + 5; j++){
+				heap[i][j].C = 0;
+				heap[i][j].ID = '\0';
+			}
 	}
 	unsigned long long Hash(string ST)
 	{
 		return (bobhash->run(ST.c_str(), ST.size()));
 	}
+
 	void rehash(node hash_entry, int loop_times, int j, unsigned long long hash) {
 		int k=1-j;
-		unsigned long long re_hash = hash ^ Hash(std::to_string(hash_entry.FP)); //XOR CUCKOO HASHING
+		unsigned long long re_hash = hash ^ Hash(std::to_string(hash_entry.FP));
 		int Hsh = re_hash % (M2 - (2 * CC_d) + 2 *(1-j) + 3);
-		if(HK[k][Hsh][BN-1].ID == ""){	//在topk部分寻找空闲位置
-			HK[k][Hsh][BN-1].ID = hash_entry.ID;
-			HK[k][Hsh][BN-1].C = hash_entry.C;
-			return;
+		for (int r = 0; r < BN; r++) {
+			if (HK[k][Hsh][r].FP == 0) {
+				HK[k][Hsh][r].FP = hash_entry.FP;
+				HK[k][Hsh][r].C = hash_entry.C;
+				return;
+			}
 		}
-		if (loop_times == 0) {
-			HK[k][Hsh][BN-1].ID = hash_entry.ID;//no matter rehash the fingerprint or not 
-			if (hash_entry.C<HK[k][Hsh][BN-1].C)
-				HK[k][Hsh][BN-1].C = hash_entry.C;//replace entry with min count
+		if (loop_times == 0) {//if the loop times bigger than the thresh
+			HK[k][Hsh][1].FP = hash_entry.FP;//no matter rehash the fingerprint or not 
+			if (hash_entry.C<HK[k][Hsh][1].C)
+				HK[k][Hsh][1].C = hash_entry.C;//replace entry2 with min count
 				return;	
 		}
 		node tmp;
-		tmp.ID = HK[k][Hsh][BN-1].ID;
-		tmp.C = HK[k][Hsh][BN-1].C;
-		HK[k][Hsh][BN-1].ID = hash_entry.ID;
-		HK[k][Hsh][BN-1].C = hash_entry.C;
-		hash_entry.ID = tmp.ID;
+		tmp.FP = HK[k][Hsh][1].FP;
+		tmp.C = HK[k][Hsh][1].C;
+		HK[k][Hsh][1].FP = hash_entry.FP;
+		HK[k][Hsh][1].C = hash_entry.C;
+		hash_entry.FP = tmp.FP;
 		hash_entry.C = tmp.C;
 		loop_times--;
+		//printf("the loop_times = %6d\n", loop_times);
 		rehash(hash_entry, loop_times, k, re_hash);
 	}
+
 	void Insert(const string &x)
 	{
-		
+		bool mon = false;
 		int maxv = 0;
 		int max_loop = 1;
 		node temp;
 		unsigned long long H1 = Hash(x); int FP = (H1 >> 56);
-		unsigned long long H2 = H1^FP;//XOR CUCKOO HASHING	
+		unsigned long long H2 = H1^FP;//Hash(std::to_string(FP));//XOR CUCKOO HASHING
+	//	unsigned long long H2 = H1^Hash(std::to_string(FP)); //XOR CUCKOO HASHING
 		int Hsh1 = H1 % (M2 - (2 * CC_d) + 2 * 0 + 3);
-		int Hsh2 = H2 % (M2 - (2 * CC_d) + 2 * 1 + 3);				
+		int Hsh2 = H2 % (M2 - (2 * CC_d) + 2 * 1 + 3);
+		int count = 0;
+		
 		int hash[2] = { Hsh1, Hsh2 };
 		unsigned long long hashHH[2] = { H1, H2 };
-		int count = 0;
-		int ii, jj, mi=(1<<25);
-		//首先在topk部分判断是否存在
-		for(int i = 0;i < CC_d; i++){
-			if(HK[i][hash[i]][BN-1].ID == x){
-				HK[i][hash[i]][BN-1].C++;
-				return;
-			}
-		}
-		//在heavy part部分判断是否存在
-		for(int i = 0;i < CC_d; i++){
-			for (int j = 0; j < BN-1; j++){
-				if(HK[i][hash[i]][j].FP == FP){
-					HK[i][hash[i]][j].C++;
-					if(HK[i][hash[i]][j].C > hot_thresh){
-						rehash(HK[i][hash[i]][BN-1], max_loop, i, hash[i]);
-						HK[i][hash[i]][BN-1].ID = x;
-						HK[i][hash[i]][BN-1].C = HK[i][hash[i]][j].C;
-					}
-					return;
-				}
-			}
-		}
-		//在heavy part部分判断是否有空位
-		for(int i = 0;i < CC_d; i++){
-			for (int j = 0; j < BN-1; j++){
-				if(HK[i][hash[i]][j].FP == 0){
-					HK[i][hash[i]][j].FP = FP;
-					HK[i][hash[i]][j].C = 1;
-					return;
-				}
-			}
-		}
-		//在heavy part部分执行指数衰减再判断是否有空位
-		for(int i = 0;i < CC_d; i++){
-			for (int j = 0; j < BN-1; j++){
-				double prob_decay = pow(CC_b, -HK[i][hash[i]][j].C);
-				if (rand() <= RAND_MAX * prob_decay) {
-    				HK[i][hash[i]][j].C--;
-				}
-			}
-		}
-		for(int i = 0;i < CC_d; i++){
-			for (int j = 0; j < BN-1; j++){
-				if(HK[i][hash[i]][j].C==0){
-					HK[i][hash[i]][j].FP = FP;
-					HK[i][hash[i]][j].C = 1;
-					return;
-				}
+		int index;
+		for(int i=0;i<CC_d;i++){
+			if(heap[i][hash[i]].ID == x){
+				mon = true;
+				index = i;
+				break;
 			}
 		}
 		
+		int ii, jj, mi=(1<<25);	
+		for(int i = 0; i < CC_d; i++)
+			for (int j = 0; j < BN; j++)
+			{	
+				if (mi > HK[i][hash[i]][j].C){
+					ii=i; jj=j; mi=HK[i][hash[i]][j].C;
+				}	
+				if (HK[i][hash[i]][j].FP == FP) {
+					int c = HK[i][hash[i]][j].C;
+					if (mon || c <= heap[i][hash[i]].C)
+						HK[i][hash[i]][j].C++;
+					maxv = max(maxv, HK[i][hash[i]][j].C);
+					count = 1;
+					// testflag = 1;testi = i;testj = hash[i];testr = j;
+					break;
+				}
+				if(HK[i][hash[i]][j].FP == 0)
+				{
+					HK[i][hash[i]][j].FP=FP;
+					HK[i][hash[i]][j].C=1;
+					maxv=max(maxv,1);
+					count = 1;
+					break;
+				}
+			}
+
+		if (count == 0) {	//mean can not insert normally
+			// temp.FP = HK[ii][hash[ii]][jj].FP;
+			// temp.C = HK[ii][hash[ii]][jj].C;
+			HK[ii][hash[ii]][jj].FP = FP;
+			HK[ii][hash[ii]][jj].C = 1;
+			maxv=max(maxv, 1);
+			// rehash(temp, max_loop, ii, hashHH[ii]);
+		}
+
+		if(!mon){
+			if(heap[0][hash[0]].ID=="\0" || maxv-heap[0][hash[0]].C==1){
+				heap[0][hash[0]].ID = x;
+				heap[0][hash[0]].C = maxv;
+			}else if(heap[1][hash[1]].ID=="\0" || maxv-heap[1][hash[1]].C==1){
+				heap[1][hash[1]].ID = x;
+				heap[1][hash[1]].C = maxv;
+			}
+		}else{
+			heap[index][hash[index]].C = maxv;
+		}
 	}
 	struct Node { string x; int y; int thre;} q[MAX_MEM + 10];
 	static int cmp(Node i, Node j) { return i.y > j.y; }
@@ -136,15 +154,14 @@ public:
 		int CNT = 0;
 		for (int i = 0; i < CC_d; i++) {
 			for (int j = 0;j < M2+5;j++){
-				if(HK[i][j][BN-1].C!=0){
-					q[i*(M2+5)+j].x = HK[i][j][BN-1].ID; 
-					q[i*(M2+5)+j].y = HK[i][j][BN-1].C;
-					CNT++;
-				}
+				q[i*(M2+5)+j].x = heap[i][j].ID; 
+				q[i*(M2+5)+j].y = heap[i][j].C;
+				CNT++;
 			}
 		}
 		sort(q, q + CNT, cmp);
 	}
+	int jump=0, x_num=0;
 	pair<string, int> Query(int k)
 	{
 		if(k<CC_d*M2){

@@ -21,11 +21,8 @@ private:
 	struct node { int C, FP; string ID; } HK[CC_d][MAX_MEM + 10][BN]; 
 	BOBHash64 * bobhash;
 	int K, M2;
-	double epsilon; //比例系数
-	int hot_thresh; //热流阈值
-	int entry5_thresh; //entry5大小阈值
 public:
-	cuckoocounter3(int M2, int K, double e, int h, int e5) :M2(M2), K(K), epsilon(e), hot_thresh(h), entry5_thresh(e5)
+	cuckoocounter3(int M2, int K) :M2(M2), K(K)
 	{ 
 		bobhash = new BOBHash64(1005); 
 	}
@@ -45,37 +42,58 @@ public:
 	{
 		return (bobhash->run(ST.c_str(), ST.size()));
 	}
-	void rehash(node hash_entry, int loop_times, int j, unsigned long long hash) {
-		int k=1-j;
+	void rehash(node hash_entry, int loop_times, int i, unsigned long long hash,int j) {
+		int k=1-i;
 		unsigned long long re_hash = hash ^ Hash(std::to_string(hash_entry.FP)); //XOR CUCKOO HASHING
-		int Hsh = re_hash % (M2 - (2 * CC_d) + 2 *(1-j) + 3);
-		for (int r = 0; r < BN-1; r++) { //只在前4个entry中寻找空闲位置
-			if (HK[k][Hsh][r].FP == 0) {
-				HK[k][Hsh][r].FP = hash_entry.FP;
-				HK[k][Hsh][r].C = hash_entry.C;
+		int Hsh = re_hash % (M2 - (2 * CC_d) + 2 *(1-i) + 3);
+		if(j == BN-1){	//被踢出的是entry5
+			if(HK[k][Hsh][BN-1].FP == 0){
+				HK[k][Hsh][BN-1] = hash_entry;
 				return;
+			}
+		}else{
+			for (int r = 0; r < BN; r++) { //寻找空闲位置
+				if (HK[k][Hsh][r].FP == 0) {
+					HK[k][Hsh][r] = hash_entry;
+					bucket_sort(r,k,Hsh);
+					return;
+				}
 			}
 		}
 		if (loop_times == 0) {
-			HK[k][Hsh][1].FP = hash_entry.FP;//no matter rehash the fingerprint or not 
-			if (hash_entry.C<HK[k][Hsh][1].C)
-				HK[k][Hsh][1].C = hash_entry.C;//replace entry2 with min count
+			if(j == BN-1){
+				HK[k][Hsh][BN-1] = hash_entry;
+				return;
+			}else{
+				HK[k][Hsh][1].FP = hash_entry.FP;//no matter rehash the fingerprint or not 
+				HK[k][Hsh][1].ID = hash_entry.ID;
+				if (hash_entry.C<HK[k][Hsh][1].C)
+					HK[k][Hsh][1].C = hash_entry.C;//replace entry2 with min count
+				bucket_sort(1,k,Hsh);
 				return;	
+			}
 		}
-		node tmp;
-		tmp.FP = HK[k][Hsh][1].FP;
-		tmp.C = HK[k][Hsh][1].C;
-		HK[k][Hsh][1].FP = hash_entry.FP;
-		HK[k][Hsh][1].C = hash_entry.C;
-		hash_entry.FP = tmp.FP;
-		hash_entry.C = tmp.C;
 		loop_times--;
-		rehash(hash_entry, loop_times, k, re_hash);
+		if(j == BN-1){
+			std::swap(hash_entry,HK[k][Hsh][BN-1]);
+			rehash(hash_entry, loop_times, k, re_hash,BN-1);
+		}else{
+			std::swap(hash_entry,HK[k][Hsh][1]);
+			bucket_sort(1,k,Hsh);
+			rehash(hash_entry, loop_times, k, re_hash,1);
+		}
 	}
+
+	void bucket_sort(int entry_index, int i, int j) {
+    	while (entry_index < BN-2 && HK[i][j][entry_index].C > HK[i][j][entry_index + 1].C) {
+        	std::swap(HK[i][j][entry_index], HK[i][j][entry_index + 1]);
+        	entry_index++;
+    	}
+	}
+
+
 	void Insert(const string &x)
 	{
-		
-		int maxv = 0;
 		int max_loop = 1;
 		node temp;
 		unsigned long long H1 = Hash(x); int FP = (H1 >> 56);
@@ -87,68 +105,44 @@ public:
 		int count = 0;
 		int ii, jj, mi=(1<<25);
 		for(int i = 0; i < CC_d; i++)
-			for (int j = 0; j < BN-1; j++) //只在前4个entry中寻找空闲位置或者计数器最小的位置
+			for (int j = 0; j < BN; j++) //寻找空闲位置或者计数器最小的位置
 			{
-				if (mi > HK[i][hash[i]][j].C){
-					ii=i; jj=j; mi=HK[i][hash[i]][j].C;
-				}
+				// if (mi > HK[i][hash[i]][j].C){
+				// 	ii=i; jj=j; mi=HK[i][hash[i]][j].C;
+				// }
 				if (HK[i][hash[i]][j].FP == FP) {
 					HK[i][hash[i]][j].C++; //如果找到相同的指纹，就增加计数器
-					maxv = max(maxv, HK[i][hash[i]][j].C);
 					count = 1;
-					if(maxv > hot_thresh){	//如果计数器超过了热流阈值，就认为可能是top-k流
-						if(HK[i][hash[i]][4].C < entry5_thresh){ 	//如果第5个entry的计数器小于entry5大小阈值，就直接比较
-							if(maxv > HK[i][hash[i]][4].C){ //如果比第5个entry的计数器大，就替换掉，并交换位置
-								temp.FP = HK[i][hash[i]][4].FP;
-								temp.C = HK[i][hash[i]][4].C;
-								temp.ID = HK[i][hash[i]][4].ID; //同时更新流id的值
-								HK[i][hash[i]][4].FP = FP;
-								HK[i][hash[i]][4].C = maxv;
-								HK[i][hash[i]][4].ID = x; //同时更新流id的值
-								HK[i][hash[i]][j].FP = temp.FP;
-								HK[i][hash[i]][j].C = temp.C;
-								HK[i][hash[i]][j].ID = temp.ID; //同时更新流id的值
-							}
-						}else{ 	//如果第5个entry的计数器大于等于entry5大小阈值，就乘以一个比例系数后比较
-							if(maxv > HK[i][hash[i]][4].C * epsilon){ //如果乘以比例系数后比第5个entry的计数器大，就替换掉，并移动到另一个桶中的第4个位置
-								temp.FP = HK[i][hash[i]][4].FP;
-								temp.C = HK[i][hash[i]][4].C;
-								temp.ID = HK[i][hash[i]][4].ID; //同时更新流id的值
-								HK[i][hash[i]][4].FP = FP;
-								HK[i][hash[i]][4].C = maxv;
-								HK[i][hash[i]][4].ID = x; //同时更新流id的值
-								HK[i][hash[i]][j].FP = 0; //将原来的位置置空
-								HK[i][hash[i]][j].C = 0;
-								HK[i][hash[i]][j].ID = ""; //同时更新流id的值
-								int k=1-i; //另一个桶的编号
-								unsigned long long re_hash = hashHH[k] ^ Hash(std::to_string(temp.FP)); //另一个桶的哈希值
-								int Hsh = re_hash % (M2 - (2 * CC_d) + 2 *(1-k) + 3); //另一个桶的索引
-								if(HK[k][Hsh][3].FP != 0) //如果另一个桶中的第4个位置已经有元素了，就丢弃该元素，不再移动
-									return;
-								HK[k][Hsh][3].FP = temp.FP; //将被替换掉的entry移动到另一个桶中的第4个位置
-								HK[k][Hsh][3].C = temp.C;
-								HK[k][Hsh][3].ID = temp.ID; //同时更新流id的值
-							}
+					if(HK[i][hash[i]][j].C > HK[i][hash[i]][BN-1].C*2 && j < BN-1){	//如果计数器超过了阈值，就认为可能是top-k流
+						temp =  HK[i][hash[i]][BN-1];
+						HK[i][hash[i]][BN-1] = HK[i][hash[i]][j];
+						HK[i][hash[i]][j].C = HK[i][hash[i]][j].FP = 0;
+						HK[i][hash[i]][j].ID = '\0';
+						if(temp.C != 0){
+							rehash(temp, max_loop, i, hashHH[i],BN-1);
 						}
 					}
+					bucket_sort(j,i,hash[i]);
 					break;
+					
 				}
 				if(HK[i][hash[i]][j].FP == 0)
 				{
 					HK[i][hash[i]][j].ID=x;
 					HK[i][hash[i]][j].FP=FP; //如果找到空闲的位置，就插入指纹和计数器为1
 					HK[i][hash[i]][j].C=1;
-					maxv=max(maxv,1);
 					count = 1;
 					break;
 				}
 			}
 		if (count == 0) { //如果没有找到空闲的位置或者相同的指纹，就替换掉计数器最小的位置，并重哈希
-			HK[ii][hash[ii]][jj].ID = x;
-			HK[ii][hash[ii]][jj].FP = FP;
-			HK[ii][hash[ii]][jj].C = 1;
-			maxv=max(maxv, 1);
-			//rehash(temp, max_loop, ii, hashHH[ii]);
+			// HK[ii][hash[ii]][jj].ID = x;
+			// HK[ii][hash[ii]][jj].FP = FP;
+			// HK[ii][hash[ii]][jj].C = 1;
+			// rehash(HK[0][hash[0]][0], max_loop, 0, hashHH[0],0);
+			HK[0][hash[0]][0].FP = FP;
+			HK[0][hash[0]][0].C = 1;
+			HK[0][hash[0]][0].ID = x;
 		}
 		
 	}
