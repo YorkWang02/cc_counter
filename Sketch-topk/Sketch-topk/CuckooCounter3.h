@@ -55,7 +55,7 @@ public:
 			for (int r = 0; r < BN; r++) { //寻找空闲位置
 				if (HK[k][Hsh][r].FP == 0) {
 					HK[k][Hsh][r] = hash_entry;
-					bucket_sort(r,k,Hsh);
+					// bucket_sort(r,k,Hsh);
 					return;
 				}
 			}
@@ -69,7 +69,7 @@ public:
 				HK[k][Hsh][1].ID = hash_entry.ID;
 				if (hash_entry.C<HK[k][Hsh][1].C)
 					HK[k][Hsh][1].C = hash_entry.C;//replace entry2 with min count
-				bucket_sort(1,k,Hsh);
+				// bucket_sort(1,k,Hsh);
 				return;	
 			}
 		}
@@ -79,7 +79,7 @@ public:
 			rehash(hash_entry, loop_times, k, re_hash,BN-1);
 		}else{
 			std::swap(hash_entry,HK[k][Hsh][1]);
-			bucket_sort(1,k,Hsh);
+			// bucket_sort(1,k,Hsh);
 			rehash(hash_entry, loop_times, k, re_hash,1);
 		}
 	}
@@ -94,6 +94,8 @@ public:
 
 	void Insert(const string &x)
 	{
+		bool mon = false;
+		int maxv = 0;
 		int max_loop = 1;
 		node temp;
 		unsigned long long H1 = Hash(x); int FP = (H1 >> 56);
@@ -104,45 +106,60 @@ public:
 		unsigned long long hashHH[2] = { H1, H2 };
 		int count = 0;
 		int ii, jj, mi=(1<<25);
+		int pos_i,pos_j;
+
+		for(int i=0;i<CC_d;i++){	//先遍历两个备用桶的entry5
+			if(HK[i][hash[i]][BN-1].ID == x){
+				HK[i][hash[i]][BN-1].C++;
+				return;
+			}
+		}
+
 		for(int i = 0; i < CC_d; i++)
-			for (int j = 0; j < BN; j++) //寻找空闲位置或者计数器最小的位置
+			for (int j = 0; j < BN-1; j++) //寻找空闲位置或者计数器最小的位置
 			{
-				// if (mi > HK[i][hash[i]][j].C){
-				// 	ii=i; jj=j; mi=HK[i][hash[i]][j].C;
-				// }
+				if (mi > HK[i][hash[i]][j].C){
+					ii=i; jj=j; mi=HK[i][hash[i]][j].C;
+				}
 				if (HK[i][hash[i]][j].FP == FP) {
-					HK[i][hash[i]][j].C++; //如果找到相同的指纹，就增加计数器
+					pos_i = i;
+					pos_j = j;
+					HK[i][hash[i]][j].C++; 
+					maxv = max(maxv, HK[i][hash[i]][j].C);
 					count = 1;
-					if(HK[i][hash[i]][j].C > HK[i][hash[i]][BN-1].C*2 && j < BN-1){	//如果计数器超过了阈值，就认为可能是top-k流
-						temp =  HK[i][hash[i]][BN-1];
-						HK[i][hash[i]][BN-1] = HK[i][hash[i]][j];
-						HK[i][hash[i]][j].C = HK[i][hash[i]][j].FP = 0;
-						HK[i][hash[i]][j].ID = '\0';
-						if(temp.C != 0){
-							rehash(temp, max_loop, i, hashHH[i],BN-1);
-						}
-					}
-					bucket_sort(j,i,hash[i]);
 					break;
-					
 				}
 				if(HK[i][hash[i]][j].FP == 0)
 				{
+					pos_i = i;
+					pos_j = j;
 					HK[i][hash[i]][j].ID=x;
 					HK[i][hash[i]][j].FP=FP; //如果找到空闲的位置，就插入指纹和计数器为1
 					HK[i][hash[i]][j].C=1;
+					maxv=max(maxv,1);
 					count = 1;
 					break;
 				}
 			}
 		if (count == 0) { //如果没有找到空闲的位置或者相同的指纹，就替换掉计数器最小的位置，并重哈希
-			// HK[ii][hash[ii]][jj].ID = x;
-			// HK[ii][hash[ii]][jj].FP = FP;
-			// HK[ii][hash[ii]][jj].C = 1;
+			HK[ii][hash[ii]][jj].ID = x;
+			HK[ii][hash[ii]][jj].FP = FP;
+			HK[ii][hash[ii]][jj].C = 1;
+			pos_i = ii;
+			pos_j = jj;
+			maxv=max(maxv, 1);
 			// rehash(HK[0][hash[0]][0], max_loop, 0, hashHH[0],0);
-			HK[0][hash[0]][0].FP = FP;
-			HK[0][hash[0]][0].C = 1;
-			HK[0][hash[0]][0].ID = x;
+		}
+
+		for(int i = 0;i < CC_d; i++){
+			if(HK[i][hash[i]][BN-1].ID == "\0"){
+				std::swap(HK[i][hash[i]][BN-1],HK[pos_i][hash[pos_i]][pos_j]);
+				return;
+			}
+			if(maxv-HK[i][hash[i]][BN-1].C==1){
+				std::swap(HK[i][hash[i]][BN-1],HK[pos_i][hash[pos_i]][pos_j]);
+				return;
+			}
 		}
 		
 	}

@@ -99,8 +99,12 @@ public:
 				break;
 			}
 		}
-		
+		if(mon){
+			heap[index][hash[index]].C++;
+			return;
+		}
 		int ii, jj, mi=(1<<25);	
+		int pos_i, pos_j;
 		for(int i = 0; i < CC_d; i++)
 			for (int j = 0; j < BN; j++)
 			{	
@@ -108,6 +112,8 @@ public:
 					ii=i; jj=j; mi=HK[i][hash[i]][j].C;
 				}	
 				if (HK[i][hash[i]][j].FP == FP) {
+					pos_i=i;
+					pos_j=j;
 					int c = HK[i][hash[i]][j].C;
 					if (mon || c <= heap[i][hash[i]].C)
 						HK[i][hash[i]][j].C++;
@@ -118,6 +124,8 @@ public:
 				}
 				if(HK[i][hash[i]][j].FP == 0)
 				{
+					pos_i=i;
+					pos_j=j;
 					HK[i][hash[i]][j].FP=FP;
 					HK[i][hash[i]][j].C=1;
 					maxv=max(maxv,1);
@@ -131,20 +139,52 @@ public:
 			// temp.C = HK[ii][hash[ii]][jj].C;
 			HK[ii][hash[ii]][jj].FP = FP;
 			HK[ii][hash[ii]][jj].C = 1;
+			pos_i=ii;
+			pos_j=jj;
 			maxv=max(maxv, 1);
 			// rehash(temp, max_loop, ii, hashHH[ii]);
 		}
 
-		if(!mon){
-			if(heap[0][hash[0]].ID=="\0" || maxv-heap[0][hash[0]].C==1){
-				heap[0][hash[0]].ID = x;
-				heap[0][hash[0]].C = maxv;
-			}else if(heap[1][hash[1]].ID=="\0" || maxv-heap[1][hash[1]].C==1){
-				heap[1][hash[1]].ID = x;
-				heap[1][hash[1]].C = maxv;
-			}
-		}else{
-			heap[index][hash[index]].C = maxv;
+		if(heap[0][hash[0]].ID=="\0"){
+			heap[0][hash[0]].ID = x;
+			heap[0][hash[0]].C = maxv;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
+		}else if(heap[1][hash[1]].ID=="\0"){
+			heap[1][hash[1]].ID = x;
+			heap[1][hash[1]].C = maxv;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
+		}
+		// else if(maxv-heap[0][hash[0]].C==1){	//流交换
+		// 	int fp = Hash(heap[0][hash[0]].ID)>>56;
+		// 	int c = heap[0][hash[0]].C;
+		// 	heap[0][hash[0]].ID = x;
+		// 	heap[0][hash[0]].C = maxv;
+		// 	HK[pos_i][hash[pos_i]][pos_j].C = c;
+		// 	HK[pos_i][hash[pos_i]][pos_j].FP = fp;
+		// }else if(maxv-heap[1][hash[1]].C==1){
+		// 	int fp = Hash(heap[1][hash[1]].ID)>>56;
+		// 	int c = heap[1][hash[1]].C;
+		// 	heap[1][hash[1]].ID = x;
+		// 	heap[1][hash[1]].C = maxv;
+		// 	HK[pos_i][hash[pos_i]][pos_j].C = c;
+		// 	HK[pos_i][hash[pos_i]][pos_j].FP = fp;
+		// }
+		else if(maxv-heap[pos_i][hash[pos_i]].C==1){	//流下放
+			int fp = Hash(heap[pos_i][hash[pos_i]].ID)>>56;
+			int c = heap[pos_i][hash[pos_i]].C;
+			heap[pos_i][hash[pos_i]].ID = x;
+			heap[pos_i][hash[pos_i]].C = maxv;
+			HK[pos_i][hash[pos_i]][pos_j].C = c;
+			HK[pos_i][hash[pos_i]][pos_j].FP = fp;
+		}else if(maxv-heap[1-pos_i][hash[1-pos_i]].C==1){
+			int fp = Hash(heap[1-pos_i][hash[1-pos_i]].ID)>>56;
+			int c = heap[1-pos_i][hash[1-pos_i]].C;
+			heap[1-pos_i][hash[1-pos_i]].ID = x;
+			heap[1-pos_i][hash[1-pos_i]].C = maxv;
+			HK[1-pos_i][hash[1-pos_i]][0].C = c;
+			HK[1-pos_i][hash[1-pos_i]][0].FP = fp;
 		}
 	}
 	struct Node { string x; int y; int thre;} q[MAX_MEM + 10];
