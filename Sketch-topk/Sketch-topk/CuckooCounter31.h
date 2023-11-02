@@ -94,15 +94,17 @@ public:
 		int index;
 		for(int i=0;i<CC_d;i++){
 			if(heap[i][hash[i]].ID == x){
-				mon = true;
-				index = i;
-				break;
+				// mon = true;
+				// index = i;
+				// break;
+				heap[i][hash[i]].C++;
+				return;
 			}
 		}
-		if(mon){
-			heap[index][hash[index]].C++;
-			return;
-		}
+		// if(mon){
+		// 	heap[index][hash[index]].C++;
+		// 	return;
+		// }
 		int ii, jj, mi=(1<<25);	
 		int pos_i, pos_j;
 		for(int i = 0; i < CC_d; i++)
@@ -185,6 +187,8 @@ public:
 			heap[1-pos_i][hash[1-pos_i]].C = maxv;
 			HK[1-pos_i][hash[1-pos_i]][0].C = c;
 			HK[1-pos_i][hash[1-pos_i]][0].FP = fp;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
 		}
 	}
 	struct Node { string x; int y; int thre;} q[MAX_MEM + 10];

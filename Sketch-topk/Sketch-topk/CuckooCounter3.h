@@ -42,59 +42,37 @@ public:
 	{
 		return (bobhash->run(ST.c_str(), ST.size()));
 	}
-	void rehash(node hash_entry, int loop_times, int i, unsigned long long hash,int j) {
-		int k=1-i;
-		unsigned long long re_hash = hash ^ Hash(std::to_string(hash_entry.FP)); //XOR CUCKOO HASHING
-		int Hsh = re_hash % (M2 - (2 * CC_d) + 2 *(1-i) + 3);
-		if(j == BN-1){	//被踢出的是entry5
-			if(HK[k][Hsh][BN-1].FP == 0){
-				HK[k][Hsh][BN-1] = hash_entry;
+	void rehash(node hash_entry, int loop_times, int j, unsigned long long hash) {
+		int k=1-j;
+		unsigned long long re_hash = hash ^ Hash(std::to_string(hash_entry.FP));
+		int Hsh = re_hash % (M2 - (2 * CC_d) + 2 *(1-j) + 3);
+		for (int r = 0; r < BN-1; r++) {
+			if (HK[k][Hsh][r].FP == 0) {
+				HK[k][Hsh][r].FP = hash_entry.FP;
+				HK[k][Hsh][r].C = hash_entry.C;
 				return;
-			}
-		}else{
-			for (int r = 0; r < BN; r++) { //寻找空闲位置
-				if (HK[k][Hsh][r].FP == 0) {
-					HK[k][Hsh][r] = hash_entry;
-					// bucket_sort(r,k,Hsh);
-					return;
-				}
 			}
 		}
-		if (loop_times == 0) {
-			if(j == BN-1){
-				HK[k][Hsh][BN-1] = hash_entry;
-				return;
-			}else{
-				HK[k][Hsh][1].FP = hash_entry.FP;//no matter rehash the fingerprint or not 
-				HK[k][Hsh][1].ID = hash_entry.ID;
-				if (hash_entry.C<HK[k][Hsh][1].C)
-					HK[k][Hsh][1].C = hash_entry.C;//replace entry2 with min count
-				// bucket_sort(1,k,Hsh);
+		if (loop_times == 0) {//if the loop times bigger than the thresh
+			HK[k][Hsh][1].FP = hash_entry.FP;//no matter rehash the fingerprint or not 
+			if (hash_entry.C<HK[k][Hsh][1].C)
+				HK[k][Hsh][1].C = hash_entry.C;//replace entry2 with min count
 				return;	
-			}
 		}
+		node tmp;
+		tmp.FP = HK[k][Hsh][1].FP;
+		tmp.C = HK[k][Hsh][1].C;
+		HK[k][Hsh][1].FP = hash_entry.FP;
+		HK[k][Hsh][1].C = hash_entry.C;
+		hash_entry.FP = tmp.FP;
+		hash_entry.C = tmp.C;
 		loop_times--;
-		if(j == BN-1){
-			std::swap(hash_entry,HK[k][Hsh][BN-1]);
-			rehash(hash_entry, loop_times, k, re_hash,BN-1);
-		}else{
-			std::swap(hash_entry,HK[k][Hsh][1]);
-			// bucket_sort(1,k,Hsh);
-			rehash(hash_entry, loop_times, k, re_hash,1);
-		}
+		//printf("the loop_times = %6d\n", loop_times);
+		rehash(hash_entry, loop_times, k, re_hash);
 	}
-
-	void bucket_sort(int entry_index, int i, int j) {
-    	while (entry_index < BN-2 && HK[i][j][entry_index].C > HK[i][j][entry_index + 1].C) {
-        	std::swap(HK[i][j][entry_index], HK[i][j][entry_index + 1]);
-        	entry_index++;
-    	}
-	}
-
 
 	void Insert(const string &x)
 	{
-		bool mon = false;
 		int maxv = 0;
 		int max_loop = 1;
 		node temp;
@@ -124,7 +102,10 @@ public:
 				if (HK[i][hash[i]][j].FP == FP) {
 					pos_i = i;
 					pos_j = j;
-					HK[i][hash[i]][j].C++; 
+					int  c = HK[i][hash[i]][j].C;
+					if(c <= HK[i][hash[i]][BN-1].C){
+						HK[i][hash[i]][j].C++; 
+					}
 					maxv = max(maxv, HK[i][hash[i]][j].C);
 					count = 1;
 					break;
@@ -133,35 +114,51 @@ public:
 				{
 					pos_i = i;
 					pos_j = j;
-					HK[i][hash[i]][j].ID=x;
-					HK[i][hash[i]][j].FP=FP; //如果找到空闲的位置，就插入指纹和计数器为1
-					HK[i][hash[i]][j].C=1;
-					maxv=max(maxv,1);
+					HK[i][hash[i]][j].FP = FP; //如果找到空闲的位置，就插入指纹和计数器为1
+					HK[i][hash[i]][j].C = 1;
+					maxv = max(maxv,1);
 					count = 1;
 					break;
 				}
 			}
 		if (count == 0) { //如果没有找到空闲的位置或者相同的指纹，就替换掉计数器最小的位置，并重哈希
-			HK[ii][hash[ii]][jj].ID = x;
+			// temp.FP = HK[ii][hash[ii]][jj].FP;
+			// temp.C = HK[ii][hash[ii]][jj].C;
 			HK[ii][hash[ii]][jj].FP = FP;
 			HK[ii][hash[ii]][jj].C = 1;
 			pos_i = ii;
 			pos_j = jj;
-			maxv=max(maxv, 1);
-			// rehash(HK[0][hash[0]][0], max_loop, 0, hashHH[0],0);
+			maxv = max(maxv, 1);
+			// rehash(temp, max_loop, ii, hashHH[ii]);
 		}
 
-		for(int i = 0;i < CC_d; i++){
-			if(HK[i][hash[i]][BN-1].ID == "\0"){
-				std::swap(HK[i][hash[i]][BN-1],HK[pos_i][hash[pos_i]][pos_j]);
-				return;
-			}
-			if(maxv-HK[i][hash[i]][BN-1].C==1){
-				std::swap(HK[i][hash[i]][BN-1],HK[pos_i][hash[pos_i]][pos_j]);
-				return;
-			}
+		if(HK[0][hash[0]][BN-1].ID == "\0"){
+			HK[0][hash[0]][BN-1].ID = x;
+			HK[0][hash[0]][BN-1].C = maxv;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+		}else if(HK[1][hash[1]][BN-1].ID=="\0"){
+			HK[1][hash[1]][BN-1].ID = x;
+			HK[1][hash[1]][BN-1].C = maxv;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+		}else if(maxv-HK[pos_i][hash[pos_i]][BN-1].C == 1){
+			int fp = Hash(HK[pos_i][hash[pos_i]][BN-1].ID)>>56;
+			int c = HK[pos_i][hash[pos_i]][BN-1].C;
+			HK[pos_i][hash[pos_i]][BN-1].ID = x;
+			HK[pos_i][hash[pos_i]][BN-1].C = maxv;
+			HK[pos_i][hash[pos_i]][pos_j].C = c;
+			HK[pos_i][hash[pos_i]][pos_j].FP = fp;
+		}else if(maxv-HK[1-pos_i][hash[1-pos_i]][BN-1].C == 1){
+			int fp = Hash(HK[1-pos_i][hash[1-pos_i]][BN-1].ID)>>56;
+			int c = HK[1-pos_i][hash[1-pos_i]][BN-1].C;
+			HK[1-pos_i][hash[1-pos_i]][BN-1].ID = x;
+			HK[1-pos_i][hash[1-pos_i]][BN-1].C = maxv;
+			HK[1-pos_i][hash[1-pos_i]][0].C = c;
+			HK[1-pos_i][hash[1-pos_i]][0].FP = fp;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
 		}
-		
 	}
 	struct Node { string x; int y; int thre;} q[MAX_MEM + 10];
 	static int cmp(Node i, Node j) { return i.y > j.y; }
@@ -171,8 +168,8 @@ public:
 		int CNT = 0;
 		for (int i = 0; i < CC_d; i++) {
 			for (int j = 0;j < M2+5;j++){
-				q[i*(M2+5)+j].x = HK[i][j][4].ID; 
-				q[i*(M2+5)+j].y = HK[i][j][4].C;
+				q[i*(M2+5)+j].x = HK[i][j][BN-1].ID; 
+				q[i*(M2+5)+j].y = HK[i][j][BN-1].C;
 				CNT++;
 			}
 		}
