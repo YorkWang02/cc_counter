@@ -47,7 +47,8 @@ std::vector<std::string> func_names;
 std::map<std::string, int> AAE;
 std::map<std::string, double> ARE;
 std::map<std::string, int> _sum;
-std::map<std::string, double> _throughput;
+std::map<std::string, double> insert_throughput;
+std::map<std::string, double> query_throughput;
 
 std::vector<sketch::BaseSketch*> func;
 
@@ -62,7 +63,8 @@ void writeResultToCSV(const string ruleName, const std::string &fileName, int me
                 AAE[func_names[i]] / (K + 0.0) << "," << 
                 ARE[func_names[i]] / (K + 0.0) << "," << 
                 _sum[func_names[i]] << "/" << K << "," <<
-                _throughput[func_names[i]] << "," << endl;
+                insert_throughput[func_names[i]] << "," <<
+                query_throughput[func_names[i]] << "," << endl;
         }
         in.close();
         
@@ -194,7 +196,7 @@ int main(int argc, char** argv)
 		s[i] = tmp;
 		B[s[i]]++;
 	}
-	printf("*************throughput************\n");
+	printf("*************throughput(insert)************\n");
     std::cout << m << std::endl;
 
     for (auto &sketch_func : func) {
@@ -210,13 +212,24 @@ int main(int argc, char** argv)
 	    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
         double throughput = (double)1000.0 * m / resns;
         printf("throughput of %s (insert): %.6lf Mips\n", sketch_func->get_name().c_str(), throughput);
-        _throughput[sketch_func->get_name()] = throughput;
+        insert_throughput[sketch_func->get_name()] = throughput;
     }
 
+    printf("*************throughput(query)************\n");
+    std::cout << m << std::endl;
+
     for (auto &sketch_func : func) {
+        // if (sketch_func->get_name() == "CuckooSketch") continue;
+        clock_gettime(CLOCK_MONOTONIC, &time1);
         std::cout << sketch_func->get_name() << " work" << std::endl;;
         sketch_func->work();
+        clock_gettime(CLOCK_MONOTONIC, &time2);
+	    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
+        double throughput = (double)1000.0 * m / resns;
+        printf("throughput of %s (query): %.6lf Mips\n", sketch_func->get_name().c_str(), throughput);
+        query_throughput[sketch_func->get_name()] = throughput;
     }
+
 
     printf("\npreparing true flow\n");
 	// preparing true flow
