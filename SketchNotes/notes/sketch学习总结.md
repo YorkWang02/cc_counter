@@ -63,6 +63,18 @@ vscode 下载markdown preview enhanced插件再打开预览可生成目录
   - zipf数据集：不太理解“一次性跑出来”什么意思，zipf下的代码不就是生成数据集的代码吗？跑的时候直接把脚本的数据集路径改了不就行了？
   - 关于cc3和cc31:cc3是最终的一版，cc31是之前把所有entry5集合成一个堆的一版。按理说两者应该没区别，但是实际运行性能还是有差异。
 
+## 2024.1.7
+- 工作进展:完成cc3伪代码(见cc3插入算法部分),将cc3实现到全流
+- cc3实现细节问题:(不重要,先记录下来)
+  - maxloop>0时,如果entry被kick到一个桶,这相当于被insert到备用桶,这时要不要考虑对它也执行一次Insert_top方法?(目前实现上采用了鸵鸟策略即不执行,因为一次Insert可能会导致多次kick,如果每次kick都要执行一次Insert_top方法,脑测下来感觉性能会下降,只对第一次插入执行一次就行)
+  - 全流版本代码性能不佳,考虑受到策略影响和内存影响:
+    - 内存方面:增设entry5导致桶数量减少
+    - 策略影响:当我刻意将桶数量维持不变时,性能指标还是有所下降,说明该策略可能对全流指标产生负面影响(不排除代码编写问题)
+- 关于计数器合并思想:
+  - cc3中的Insert_top函数旨在分离top流和一般流,可以认为是流分离策略.
+  - flag指示的计数器合并思想和cc一个桶内设置多个大小不一的计数器的思想类似,是一种适应动态网络和流量偏斜性的计数器自适应策略.
+  - 考虑先在cc上做文章,如果能改善再和cc3合并.
+
 ---
 # sketch算法比较
 ## 全流频率估计
@@ -344,6 +356,88 @@ vscode 下载markdown preview enhanced插件再打开预览可生成目录
 公式中的⊕（XOR）保证h1（e）也可以从h2（e）和e's fingerprint计算出来，这意味着h1（e）= h2（e）⊕hash（e×sfingerprint）。因此，无论流现在在哪个数组中，我们都可以通过其当前位置和指纹计算流在另一个数组中的位置：h_another = h_current ⊕hash（flow's fingerprint）。
 ### 插入算法
 - Insert：为简洁起见，我们使用A[i][j][k]来引用array[i][bucketj][entryk]。最初，所有条目都设置为0。当插入属于流e的数据包p时，我们首先通过哈希计算两个索引，h1(e)和h2(e)，以找到两个候选桶，A[1] [h1(e)]和 A[2] [h2(e)]。然后扫描这两个桶的A[1] [h1(e)][entryB]，A[2] [h2(e)][entryB]。如果流e已存在，则将相应条目的计数器加1。否则，则采用Cuckoo Counter的插入算法将流e插入到A[1][h1(e)][k]或A[2][h2(e)][k]（1 ≤ k ≤ B-1）位置。插入后，首先检查插入桶的entryB是否为空，如果是，则用条目中流e的信息占用该entryB,同时原来保存流e信息的条目置空；否则，检查备用桶的entryB是否为空，如果是，则用条目中流e的信息占用该entryB,同时原来保存流e信息的条目置空。如果上面两种情况都不满足，说明A[1] [h1(e)][entryB]和A[2] [h2(e)][entryB]已经存放了元素。这时，首先将流e的计数器与插入桶的entryB的计数器进行比较，如果流e的计数器更大，则用条目中流e的信息占用该entryB,同时原来保存流e信息的条目置空，接着将entryB中原来的信息下放到被置空的条目中；否则再将流e的计数器与备用桶的entryB的计数器进行比较，如果流e的计数器更大，则用条目中流e的信息占用该entryB,同时原来保存流e信息的条目置空，接着将备用桶entryB中原来的信息下放到备用桶的entry1到entryB-1中（选择一个合适大小的条目取代，发生冲突时计数器选择较小值）。
+```
+i = 1 或 2;
+i'= 2 或 1;
+i+i'=3;
+1 <= j <=B-1;
+1 <= k <=B-1;
+一个桶中有B个条目;
+Ai[h][k]表示第i个桶数组中第h个桶中的第k个条目
+Ai'[rh][k]表示第i'个桶数组中第rh个桶中的第k个条目
+
+
+Function Stay_overflow(Ai[h][j]):
+	if has Ai[h][k](k>j) is smaller then
+		swap(Ai[h][j],Ai[h][k]);
+		return 1;
+	return 0;
+
+Function Kick_overflow(Ai[h][j]):
+	rh = h 异或 hash(Ai[h][j].fp);
+	if Ai'[rh][k] is an empty and capable entry then
+		put Ai[h][j] to Ai'[rh][k];
+	else 
+		choose a capable entry Ai'[rh][k];
+		Kickout(maxloop,Ai'[rh][k]);
+		put Ai[h][j] to Ai'[rh][k];
+	set Ai[h][j] to 0;
+
+Function Kickout(maxloop,Ai[h][j]):
+	rh = h 异或 hash(Ai[h][j].fp);
+	if Ai'[rh][k] is an empty and capable entry then
+		put Ai[h][j] to Ai'[rh][k];
+	else if maxloop>0 then
+		maxloop--;
+		choose a capable entry Ai'[rh][k];
+		Kickout(maxloop,Ai'[rh][k]);
+		put Ai[h][j] to Ai'[rh][k];
+	else 
+		choose a capable entry Ai'[rh][k];
+		put Ai[h][j] to Ai'[rh][k];(take smaller cnt)
+
+Function Insert_top(Ai[h][j]):
+	rh = h 异或 hash(Ai[h][j].fp);
+	if Ai[h][B] is an empty entry then
+		put Ai[h][j] to Ai[h][B];
+		set Ai[h][j] to 0;
+	else if Ai'[rh][B] is an empty entry then
+		put Ai[h][j] to Ai'[rh][B];
+		set Ai[h][j] to 0;
+	else if Ai[h][B] is smaller than Ai[h][j] then
+		swap(Ai[h][B],Ai[h][j]);
+	else if Ai'[rh][B] is smaller than Ai[h][j] then
+		if has a capable entry Ai'[rh][j'](Ai'[rh][j'].cnt<Ai'[rh][B].cnt) then
+			(Kickout(Ai'[rh][j']);)
+			put Ai'[rh][B] to Ai'[rh][j'];
+		put Ai[h][j] to Ai'[rh][B];
+		set Ai[h][j] to 0;
+
+Function Insert(e):
+  fp = fingerprint(e);maxloop>=0;
+  h1(e) = hash(e);h2(e) = h1(e) 异或 hash(fp);
+  if fp == Ai[hi(e)][B].fp then 
+    Ai[hi(e)][B].cnt++;
+    return;
+  if fp == Ai'[hi'(e)][B].fp then 
+    Ai'[hi'(e)][B].cnt++;
+    return;
+  if fp == Ai[hi(e)][j].fp then 
+		Ai[hi(e)][j].cnt++;
+		Insert_top(Ai[hi(e)][j]);
+		if Ai[hi(e)][j] overflow then
+			Stay_overflow(Ai[hi(e)][j]);
+			if failed then
+				Kick_overflow(Ai[hi(e)][j]);
+	else if Ai[hi(e)] has an empty Ai[hi(e)][j] then 
+		put {fp,1} to Ai[hi(e)][j];
+		Insert_top(Ai[hi(e)][j]);
+	else 
+		random choose an Ai[hi(e)][1];
+		Kickout(maxloop,Ai[hi(e)][1]);
+		put {fp,1} to Ai[hi(e)][1];
+		Insert_top(Ai[hi(e)][1]);
+```
 ### 查询算法
 - Query：当查询top-k流时，首先需要将所有bucket的entryB按照计数器大小进行排序，然后输出前k项即可。
 
