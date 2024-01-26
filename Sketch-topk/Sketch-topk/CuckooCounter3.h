@@ -102,10 +102,7 @@ public:
 				if (HK[i][hash[i]][j].FP == FP) {
 					pos_i = i;
 					pos_j = j;
-					int  c = HK[i][hash[i]][j].C;
-					if(c <= HK[i][hash[i]][BN-1].C){
-						HK[i][hash[i]][j].C++; 
-					}
+					HK[i][hash[i]][j].C++; 
 					maxv = max(maxv, HK[i][hash[i]][j].C);
 					count = 1;
 					break;
@@ -132,24 +129,24 @@ public:
 			// rehash(temp, max_loop, ii, hashHH[ii]);
 		}
 
-		if(HK[0][hash[0]][BN-1].ID == "\0"){
-			HK[0][hash[0]][BN-1].ID = x;
-			HK[0][hash[0]][BN-1].C = maxv;
+		if(HK[pos_i][hash[pos_i]][BN-1].ID == "\0"){	//本桶top为空
+			HK[pos_i][hash[pos_i]][BN-1].ID = x;
+			HK[pos_i][hash[pos_i]][BN-1].C = maxv;
 			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
 			HK[pos_i][hash[pos_i]][pos_j].C = 0;
-		}else if(HK[1][hash[1]][BN-1].ID=="\0"){
-			HK[1][hash[1]][BN-1].ID = x;
-			HK[1][hash[1]][BN-1].C = maxv;
+		}else if(HK[1-pos_i][hash[1-pos_i]][BN-1].ID=="\0"){	//备用桶top为空
+			HK[1-pos_i][hash[1-pos_i]][BN-1].ID = x;
+			HK[1-pos_i][hash[1-pos_i]][BN-1].C = maxv;
 			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
 			HK[pos_i][hash[pos_i]][pos_j].C = 0;
-		}else if(maxv-HK[pos_i][hash[pos_i]][BN-1].C == 1){
+		}else if(maxv-HK[pos_i][hash[pos_i]][BN-1].C == 1){	//替代本桶top
 			int fp = Hash(HK[pos_i][hash[pos_i]][BN-1].ID)>>56;
 			int c = HK[pos_i][hash[pos_i]][BN-1].C;
 			HK[pos_i][hash[pos_i]][BN-1].ID = x;
 			HK[pos_i][hash[pos_i]][BN-1].C = maxv;
 			HK[pos_i][hash[pos_i]][pos_j].C = c;
 			HK[pos_i][hash[pos_i]][pos_j].FP = fp;
-		}else if(maxv-HK[1-pos_i][hash[1-pos_i]][BN-1].C == 1){
+		}else if(maxv-HK[1-pos_i][hash[1-pos_i]][BN-1].C == 1){	//替代候选桶top
 			int fp = Hash(HK[1-pos_i][hash[1-pos_i]][BN-1].ID)>>56;
 			int c = HK[1-pos_i][hash[1-pos_i]][BN-1].C;
 			HK[1-pos_i][hash[1-pos_i]][BN-1].ID = x;
@@ -174,6 +171,7 @@ public:
 			}
 		}
 		sort(q, q + CNT, cmp);
+
 	}
 	pair<string, int> Query(int k)
 	{

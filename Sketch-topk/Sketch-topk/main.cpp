@@ -121,11 +121,11 @@ int main(int argc, char** argv)
     std::cout << cc3_M << std::endl;
     func.push_back(new cuckoocounter3(cc3_M, K));
 
-    // // preparing cuckoocounter31
+    //preparing cuckoocounter31
     int cc31_M;
     for (cc31_M = 1; 128 * cc31_M*CC_d  <= MEM * 1000 * 8; cc31_M++); if (cc31_M % 2 == 0) cc31_M--;
     std::cout << cc31_M << std::endl;
-    func.push_back(new cuckoocounter31(cc31_M, K,3,0.01));
+    func.push_back(new cuckoocounter31(cc31_M, K));
 
     // // preparing ElasticSketch
     // // int ES_M;

@@ -117,8 +117,8 @@ public:
 			}
 
 		if (count == 0) {	//mean can not insert normally
-			// temp.FP = HK[ii][hash[ii]][jj].FP;
-			// temp.C = HK[ii][hash[ii]][jj].C;
+			temp.FP = HK[ii][hash[ii]][jj].FP;
+			temp.C = HK[ii][hash[ii]][jj].C;
 			HK[ii][hash[ii]][jj].FP = FP;
 			HK[ii][hash[ii]][jj].C = 1;
 			maxv=max(maxv, 1);
