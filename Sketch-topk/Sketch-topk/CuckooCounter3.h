@@ -13,7 +13,7 @@
 #include "params.h"
 #include "BOBHASH64.h"
 #define CC_d 2 
-#define BN 5 
+#define BN 5
 #define rep(i,a,n) for(int i=a;i<=n;i++)
 using namespace std;
 class cuckoocounter3 : public sketch::BaseSketch{
@@ -71,8 +71,45 @@ public:
 		rehash(hash_entry, loop_times, k, re_hash);
 	}
 
-	void Insert(const string &x)
-	{
+	void insert_top(int pos_i, int pos_j, const string &x, int FP, int count, int hash[2]){
+		if(HK[pos_i][hash[pos_i]][BN-1].ID == "\0"){	//本桶top为空,则占用本桶top,原条目置空
+			HK[pos_i][hash[pos_i]][BN-1].ID = x;
+			HK[pos_i][hash[pos_i]][BN-1].C = count;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+		}else if(HK[1-pos_i][hash[1-pos_i]][BN-1].ID=="\0"){	//备用桶top为空,则占用备用桶top,原条目置空
+			HK[1-pos_i][hash[1-pos_i]][BN-1].ID = x;
+			HK[1-pos_i][hash[1-pos_i]][BN-1].C = count;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+		}else if(count-HK[pos_i][hash[pos_i]][BN-1].C == 1){	//计数器大于本桶top,则占用本桶top,交换两条目位置
+			int fp = Hash(HK[pos_i][hash[pos_i]][BN-1].ID)>>56;
+			int c = HK[pos_i][hash[pos_i]][BN-1].C;
+			HK[pos_i][hash[pos_i]][BN-1].ID = x;
+			HK[pos_i][hash[pos_i]][BN-1].C = count;
+			HK[pos_i][hash[pos_i]][pos_j].C = c;
+			HK[pos_i][hash[pos_i]][pos_j].FP = fp;
+		}else if(count-HK[1-pos_i][hash[1-pos_i]][BN-1].C == 1){	//计数器大于候选桶top,则占用候选桶top,原条目置空,原候选桶top下放
+			int fp = Hash(HK[1-pos_i][hash[1-pos_i]][BN-1].ID)>>56;
+			int c = HK[1-pos_i][hash[1-pos_i]][BN-1].C;
+			HK[1-pos_i][hash[1-pos_i]][BN-1].ID = x;
+			HK[1-pos_i][hash[1-pos_i]][BN-1].C = count;
+			HK[pos_i][hash[pos_i]][pos_j].C = 0;
+			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
+			if(c <= 0xf){	//寻找一个可以刚好容纳的条目下放
+				HK[1-pos_i][hash[1-pos_i]][0].C = c;
+				HK[1-pos_i][hash[1-pos_i]][0].FP = fp;
+			}else if(c <= 0xff){
+				HK[1-pos_i][hash[1-pos_i]][2].C = c;
+				HK[1-pos_i][hash[1-pos_i]][2].FP = fp;
+			}else{
+				HK[1-pos_i][hash[1-pos_i]][3].C = c;
+				HK[1-pos_i][hash[1-pos_i]][3].FP = fp;
+			}
+		}
+	}
+
+	void Insert(const string &x){
 		int maxv = 0;
 		int max_loop = 1;
 		node temp;
@@ -86,7 +123,7 @@ public:
 		int ii, jj, mi=(1<<25);
 		int pos_i,pos_j;
 
-		for(int i=0;i<CC_d;i++){	//先遍历两个备用桶的entry5
+		for(int i = 0; i < CC_d; i++){	//先遍历两个候选桶的entry5
 			if(HK[i][hash[i]][BN-1].ID == x){
 				HK[i][hash[i]][BN-1].C++;
 				return;
@@ -103,15 +140,23 @@ public:
 					pos_i = i;
 					pos_j = j;
 					HK[i][hash[i]][j].C++; 
+					// if((j == 0 || j == 1) && HK[i][hash[i]][j].C > 0xf){	//4位计数器位数限制
+					// 	HK[i][hash[i]][j].C = 0xf; 
+					// }
+					// if(j == 2 && HK[i][hash[i]][j].C > 0xff){	//8位计数器位数限制
+					// 	HK[i][hash[i]][j].C = 0xff; 
+					// }
+					// if(j == 0 && HK[i][hash[i]][j].C > 0xff){	//8位计数器位数限制,课题二实验1
+					// 	HK[i][hash[i]][j].C = 0xff; 
+					// }
 					maxv = max(maxv, HK[i][hash[i]][j].C);
 					count = 1;
 					break;
 				}
-				if(HK[i][hash[i]][j].FP == 0)
-				{
+				if(HK[i][hash[i]][j].FP == 0){	//如果找到空闲的位置，就插入指纹和计数器为1
 					pos_i = i;
 					pos_j = j;
-					HK[i][hash[i]][j].FP = FP; //如果找到空闲的位置，就插入指纹和计数器为1
+					HK[i][hash[i]][j].FP = FP; 
 					HK[i][hash[i]][j].C = 1;
 					maxv = max(maxv,1);
 					count = 1;
@@ -119,8 +164,8 @@ public:
 				}
 			}
 		if (count == 0) { //如果没有找到空闲的位置或者相同的指纹，就替换掉计数器最小的位置，并重哈希
-			// temp.FP = HK[ii][hash[ii]][jj].FP;
-			// temp.C = HK[ii][hash[ii]][jj].C;
+			temp.FP = HK[ii][hash[ii]][jj].FP;
+			temp.C = HK[ii][hash[ii]][jj].C;
 			HK[ii][hash[ii]][jj].FP = FP;
 			HK[ii][hash[ii]][jj].C = 1;
 			pos_i = ii;
@@ -128,34 +173,7 @@ public:
 			maxv = max(maxv, 1);
 			// rehash(temp, max_loop, ii, hashHH[ii]);
 		}
-
-		if(HK[pos_i][hash[pos_i]][BN-1].ID == "\0"){	//本桶top为空
-			HK[pos_i][hash[pos_i]][BN-1].ID = x;
-			HK[pos_i][hash[pos_i]][BN-1].C = maxv;
-			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
-			HK[pos_i][hash[pos_i]][pos_j].C = 0;
-		}else if(HK[1-pos_i][hash[1-pos_i]][BN-1].ID=="\0"){	//备用桶top为空
-			HK[1-pos_i][hash[1-pos_i]][BN-1].ID = x;
-			HK[1-pos_i][hash[1-pos_i]][BN-1].C = maxv;
-			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
-			HK[pos_i][hash[pos_i]][pos_j].C = 0;
-		}else if(maxv-HK[pos_i][hash[pos_i]][BN-1].C == 1){	//替代本桶top
-			int fp = Hash(HK[pos_i][hash[pos_i]][BN-1].ID)>>56;
-			int c = HK[pos_i][hash[pos_i]][BN-1].C;
-			HK[pos_i][hash[pos_i]][BN-1].ID = x;
-			HK[pos_i][hash[pos_i]][BN-1].C = maxv;
-			HK[pos_i][hash[pos_i]][pos_j].C = c;
-			HK[pos_i][hash[pos_i]][pos_j].FP = fp;
-		}else if(maxv-HK[1-pos_i][hash[1-pos_i]][BN-1].C == 1){	//替代候选桶top
-			int fp = Hash(HK[1-pos_i][hash[1-pos_i]][BN-1].ID)>>56;
-			int c = HK[1-pos_i][hash[1-pos_i]][BN-1].C;
-			HK[1-pos_i][hash[1-pos_i]][BN-1].ID = x;
-			HK[1-pos_i][hash[1-pos_i]][BN-1].C = maxv;
-			HK[1-pos_i][hash[1-pos_i]][0].C = c;
-			HK[1-pos_i][hash[1-pos_i]][0].FP = fp;
-			HK[pos_i][hash[pos_i]][pos_j].C = 0;
-			HK[pos_i][hash[pos_i]][pos_j].FP = 0;
-		}
+		insert_top(pos_i, pos_j, x, FP, maxv, hash);	//和top比较
 	}
 	struct Node { string x; int y; int thre;} q[MAX_MEM + 10];
 	static int cmp(Node i, Node j) { return i.y > j.y; }

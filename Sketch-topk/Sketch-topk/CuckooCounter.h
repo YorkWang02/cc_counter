@@ -71,6 +71,51 @@ public:
 		rehash(hash_entry, loop_times, k, re_hash);
 	}
 
+	int overflow(int i, int j, int count, int hash[2]){
+		if(j == 0 || j == 1){
+			if(HK[i][hash[i]][2].C <= 0xf){
+				swap(HK[i][hash[i]][2],HK[i][hash[i]][j]);
+			}else if(HK[i][hash[i]][3].C <= 0xf){
+				swap(HK[i][hash[i]][3],HK[i][hash[i]][j]);
+			}else return 0;
+		}else if(j == 2){
+			if(HK[i][hash[i]][3].C <= 0xff){
+				swap(HK[i][hash[i]][3],HK[i][hash[i]][j]);
+			}else return 0;
+		}else return 0;
+		return count;
+	}
+
+	int rehash_overflow(int i,int j,int count, int hash[2], unsigned long long hashHH[2]){
+		if(j == 0 || j == 1){
+			if(HK[1-i][hash[1-i]][2].FP == 0){
+				swap(HK[1-i][hash[1-i]][2],HK[i][hash[i]][j]);
+			}else if(HK[1-i][hash[1-i]][3].FP == 0){
+				swap(HK[1-i][hash[1-i]][3],HK[i][hash[i]][j]);
+			}else if(HK[1-i][hash[1-i]][2].C <= 0xf){
+				rehash(HK[1-i][hash[1-i]][2], 1, 1-i, hashHH[1-i]);
+				HK[1-i][hash[1-i]][2].FP = HK[i][hash[i]][j].FP;
+				HK[1-i][hash[1-i]][2].C = HK[i][hash[i]][j].C;
+				HK[i][hash[i]][j].FP = 0;
+			}else if(HK[1-i][hash[1-i]][3].C <= 0xf){
+				rehash(HK[1-i][hash[1-i]][3], 1, 1-i, hashHH[1-i]);
+				HK[1-i][hash[1-i]][3].FP = HK[i][hash[i]][j].FP;
+				HK[1-i][hash[1-i]][3].C = HK[i][hash[i]][j].C;
+				HK[i][hash[i]][j].FP = 0;
+			}else return 0;
+		}else if(j == 2){
+			if(HK[1-i][hash[1-i]][3].FP == 0){
+				swap(HK[1-i][hash[1-i]][3],HK[i][hash[i]][j]);
+			}else if(HK[1-i][hash[1-i]][3].C <= 0xff){
+				rehash(HK[1-i][hash[1-i]][3], 1, 1-i, hashHH[1-i]);
+				HK[1-i][hash[1-i]][3].FP = HK[i][hash[i]][j].FP;
+				HK[1-i][hash[1-i]][3].C = HK[i][hash[i]][j].C;
+				HK[i][hash[i]][j].FP = 0;
+			}else return 0;
+		}else return 0;
+		return count;
+	}
+
 	void Insert(const string &x)
 	{
 		bool mon = false;
@@ -88,7 +133,6 @@ public:
 		
 		int hash[2] = { Hsh1, Hsh2 };
 		unsigned long long hashHH[2] = { H1, H2 };
-		// int testi,testj,testr,testflag=0;
 		
 		int ii, jj, mi=(1<<25);	
 		for(int i = 0; i < CC_d; i++)
@@ -98,12 +142,29 @@ public:
 					ii=i; jj=j; mi=HK[i][hash[i]][j].C;
 				}	
 				if (HK[i][hash[i]][j].FP == FP) {
+					int tmp;
 					int c = HK[i][hash[i]][j].C;
 					if (mon || c <= ss->getmin())
 						HK[i][hash[i]][j].C++;
+					// if((j == 0 || j == 1) && HK[i][hash[i]][j].C > 0xf){	//4位计数器位数限制
+					// 	HK[i][hash[i]][j].C = 0xf; 
+					// 	tmp = overflow(i, j, HK[i][hash[i]][j].C, hash);	//本桶内尝试解决
+					// 	if(tmp == 0){	//本桶无法解决,踢出到备用桶
+					// 		tmp = rehash_overflow(i, j, HK[i][hash[i]][j].C, hash, hashHH);
+					// 	}
+					// 	tmp = tmp==0?0xf:tmp;	//若tmp==0,说明没有办法解决溢出.
+					// }
+					// if(j == 2 && HK[i][hash[i]][j].C > 0xff){	//8位计数器位数限制
+					// 	HK[i][hash[i]][j].C = 0xff; 
+					// 	tmp = overflow(i, j, HK[i][hash[i]][j].C, hash);	//本桶内尝试解决
+					// 	if(tmp == 0){	//本桶无法解决,踢出到备用桶
+					// 		tmp = rehash_overflow(i, j, HK[i][hash[i]][j].C, hash, hashHH);
+					// 	}
+					// 	tmp = tmp==0?0xff:tmp;	//若tmp==0,说明没有办法解决溢出.
+					// }
+					// maxv = max(maxv, tmp);
 					maxv = max(maxv, HK[i][hash[i]][j].C);
 					count = 1;
-					// testflag = 1;testi = i;testj = hash[i];testr = j;
 					break;
 				}
 				if(HK[i][hash[i]][j].FP == 0)
@@ -129,9 +190,6 @@ public:
 		{
 			if (maxv - (ss->getmin()) == 1 || ss->tot < K)
 			{
-				// if(testflag ==1&&testi==0&&testj==1037){
-				// 	printf("test:i=%d,j=%d,r=%d\n",testi,testj,testr);
-				// }
 				int i = ss->getid();
 				ss->add2(ss->location(x), i);
 				ss->str[i] = x;
@@ -150,9 +208,6 @@ public:
 		else
 			if (maxv > ss->sum[p])
 			{
-				// if(testflag ==1&&testi==0&&testj==1037){
-				// 	printf("test:i=%d,j=%d,r=%d\n",testi,testj,testr);
-				// }
 				int tmp = ss->Left[ss->sum[p]];
 				ss->cut(p);
 				if (ss->head[ss->sum[p]]) tmp = ss->sum[p];
