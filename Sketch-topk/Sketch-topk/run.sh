@@ -1,45 +1,37 @@
+set +o posix
 rm result.csv
 make
-echo "MEM,func,k,AAE,ARE,_sum,throughput(insert),throughput(query)" >> result.csv
-
-ruleDir1='/home/york/dataset/data'
-for MEM in $(seq 100 100 1000)
+echo "MEM,func,k,AAE,ARE,_sum,throughput" >> result.csv
+ruleDir='/home/york/dataset/data/1.dat'
+# chmod +r /home/york/dataset/data/*.dat
+# #ruleDir[40]="/Users/caolu/Downloads/Data/1.dat"
+# if [ -z "${ruleDir[0]}" ]; then
+#     ruleDir="${ruleDir[40]}"
+# fi
+echo "ruleDir: $ruleDir"
+for ((int i = 1; i <= 1000000; i++))
 do
-    for K in 10 50 $(seq 100 100 1000)
-    do
-        for file in $ruleDir1/*.dat
-        do
-            cmd="./cuckoo -d $file -m $MEM -k $K"
-            echo $cmd
-            eval $cmd
-            pid=$!
-            wait $pid
-            if ps -p $pid > /dev/null; then
-                kill -9 $pid
-            fi
-            echo "done"
-            sleep 1
-        done
-    done
+		read -r -n 13 tmp
+        tmp="${tmp%'\n'}"
+        s[$i]="$tmp"
+        ((B[$tmp]++))
 done
+for MEM in  $(seq 50 10 150)
+#for MEM in $(seq 100 100 1000)
+# do
+    #for K in $(seq 100 100 1000)
+    do
+        #cmd="./cuckoo -d $ruleDir -m 100 -k $K"
+        cmd="./cuckoo -d $ruleDir -m $MEM -k 800" 
+        echo $cmd
+        eval $cmd
+        pid = $!
+        wait $pid
+        if ps -p $pid > /dev/null; then
+            kill -9 $pid
+        fi
+        echo "done"
+        sleep 1
+    done
+# done
 
-ruleDir2='/home/york/dataset/zipf'
-for MEM in $(seq 100 100 1000)
-do
-    for K in 10 50 $(seq 100 100 1000)
-    do
-        for file in $ruleDir2/zipf_*.dat
-        do
-            cmd="./cuckoo -d $file -m $MEM -k $K"
-            echo $cmd
-            eval $cmd
-            pid=$!
-            wait $pid
-            if ps -p $pid > /dev/null; then
-                kill -9 $pid
-            fi
-            echo "done"
-            sleep 1
-        done
-    done
-done

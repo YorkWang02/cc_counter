@@ -20,6 +20,8 @@
 #include "CuckooCounter.h"
 #include "CuckooCounter3.h"
 #include "CuckooCounter31.h"
+#include "CuckooCounter32.h"
+#include "CuckooCounter33.h"
 #include "ASketch.h"
 #include "MVSketch.h"
 #include "NitroSketch.h"
@@ -62,8 +64,8 @@ void writeResultToCSV(const string ruleName, const std::string &fileName, int me
                 AAE[func_names[i]] / (K + 0.0) << "," << 
                 ARE[func_names[i]] / (K + 0.0) << "," << 
                 _sum[func_names[i]] << "/" << K << "," <<
-                insert_throughput[func_names[i]] << "," <<
-                query_throughput[func_names[i]] << "," << endl;
+                insert_throughput[func_names[i]] << "," <<endl;
+                // query_throughput[func_names[i]] << "," << endl;
         }
         in.close();
         
@@ -97,10 +99,10 @@ int main(int argc, char** argv)
 
     // preparing Sketch
 
-    // preparing ASketch
-    // int A_M;
-    // for (A_M=1; 16*A_M*2+432*K<=MEM*1024*8; A_M++);
-    // func.push_back(new ASketch(A_M,K));
+    //preparing ASketch
+    int A_M;
+    for (A_M=1; 16*A_M*2+432*K<=MEM*1024*8; A_M++);
+    func.push_back(new ASketch(A_M,K));
 
     //preparing cuckoocounter:184
     int cc_M;
@@ -109,11 +111,11 @@ int main(int argc, char** argv)
     func.push_back(new cuckoocounter(cc_M, K, 3, 0.01));
 
 
-    // preparing cuckoocounter3
-    int cc3_M;
-    for (cc3_M = 1; 128 * cc3_M*CC_d  <= MEM * 1000 * 8; cc3_M++); if (cc3_M % 2 == 0) cc3_M--;
-    std::cout << cc3_M << std::endl;
-    func.push_back(new cuckoocounter3(cc3_M, K));
+    // // preparing cuckoocounter3
+    // int cc3_M;
+    // for (cc3_M = 1; 128 * cc3_M*CC_d  <= MEM * 1000 * 8; cc3_M++); if (cc3_M % 2 == 0) cc3_M--;
+    // std::cout << cc3_M << std::endl;
+    // func.push_back(new cuckoocounter3(cc3_M, K));
 
     //preparing cuckoocounter31
     int cc31_M;
@@ -121,15 +123,27 @@ int main(int argc, char** argv)
     std::cout << cc31_M << std::endl;
     func.push_back(new cuckoocounter31(cc31_M, K));
 
+    //preparing cuckoocounter32
+    // int cc32_M;
+    // for (cc32_M = 1; 128 * cc32_M*CC_d  <= MEM * 1000 * 8; cc32_M++); if (cc32_M % 2 == 0) cc32_M--;
+    // std::cout << cc32_M << std::endl;
+    // func.push_back(new cuckoocounter32(cc32_M, K));
+
+    //preparing cuckoocounter33
+    // int cc33_M;
+    // for (cc33_M = 1; 128 * cc33_M*CC_d  <= MEM * 1000 * 8; cc33_M++); if (cc33_M % 2 == 0) cc33_M--;
+    // std::cout << cc33_M << std::endl;
+    // func.push_back(new cuckoocounter33(cc33_M, K));
+
     // // preparing ElasticSketch
     // // int ES_M;
     // // for (ES_M=1; 32*4*ES_M+32*ES_M+432*K<=MEM*1024*8; ES_M++);
     // // func.push_back(new elasticsketch(ES_M, ES_M/ES_d, K));
 
-    // // preparing cm sketch
-    // int CM_M;
-    // for (CM_M=1; 32*CM_M*CM_d+432*K<=MEM*1024*8; CM_M++);
-    // func.push_back(new cmsketch(CM_M, K));
+    // preparing cm sketch
+    int CM_M;
+    for (CM_M=1; 32*CM_M*CM_d+432*K<=MEM*1024*8; CM_M++);
+    func.push_back(new cmsketch(CM_M, K));
 
     //     // preparing uss
     // int HU_M;
@@ -146,23 +160,23 @@ int main(int argc, char** argv)
     // for (DA_M=1; 32*DA_M*TOP_d+32*DA_M*CMM_d<=MEM*1024*8; DA_M++);if (DA_M%2==0) DA_M--;
     // func.push_back(new dasketch(DA_M, K));
 
-    // // preparing heavykeeper
-    // int hk_M;
-    // for (hk_M=1; 32*hk_M*HK_d+432*K<=MEM*1024*8; hk_M++); if (hk_M%2==0) hk_M--;
-    // func.push_back(new heavykeeper(hk_M, K));
+    // preparing heavykeeper
+    int hk_M;
+    for (hk_M=1; 32*hk_M*HK_d+432*K<=MEM*1024*8; hk_M++); if (hk_M%2==0) hk_M--;
+    func.push_back(new heavykeeper(hk_M, K));
 
-    // // // // preparing LossyCounting
+    // // preparing LossyCounting
     //  int LC_M;
     //  for (LC_M=1; 227*LC_M<=MEM*1024*8; LC_M++);
     // func.push_back(new LossyCounting(K, LC_M));
 
-    // // // preparing MVSketch
-    // int MV_M;
-    // for (MV_M=1; 32*MV_M*MV_d+432*K<=MEM*1024*8; MV_M++);
-    // func.push_back(new mvsketch(MV_M, K));
+    // // preparing MVSketch
+    int MV_M;
+    for (MV_M=1; 32*MV_M*MV_d+432*K<=MEM*1024*8; MV_M++);
+    func.push_back(new mvsketch(MV_M, K));
 
 
-    // // // // preparing spacesaving
+    // // // preparing spacesaving
     // int ss_M;
     // for (ss_M=1; 432*ss_M<=MEM*1024*8; ss_M++);
     // func.push_back(new spacesaving(ss_M, K));
@@ -209,19 +223,24 @@ int main(int argc, char** argv)
         insert_throughput[sketch_func->get_name()] = throughput;
     }
 
-    printf("*************throughput(query)************\n");
-    std::cout << m << std::endl;
+    // printf("*************throughput(query)************\n");
+    // std::cout << m << std::endl;
+
+    // for (auto &sketch_func : func) {
+    //     // if (sketch_func->get_name() == "CuckooSketch") continue;
+    //     clock_gettime(CLOCK_MONOTONIC, &time1);
+    //     std::cout << sketch_func->get_name() << " work" << std::endl;;
+    //     sketch_func->work();
+    //     clock_gettime(CLOCK_MONOTONIC, &time2);
+	//     resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
+    //     double throughput = (double)1000.0 * m / resns;
+    //     printf("throughput of %s (query): %.6lf Mips\n", sketch_func->get_name().c_str(), throughput);
+    //     query_throughput[sketch_func->get_name()] = throughput;
+    // }
 
     for (auto &sketch_func : func) {
-        // if (sketch_func->get_name() == "CuckooSketch") continue;
-        clock_gettime(CLOCK_MONOTONIC, &time1);
         std::cout << sketch_func->get_name() << " work" << std::endl;;
         sketch_func->work();
-        clock_gettime(CLOCK_MONOTONIC, &time2);
-	    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
-        double throughput = (double)1000.0 * m / resns;
-        printf("throughput of %s (query): %.6lf Mips\n", sketch_func->get_name().c_str(), throughput);
-        query_throughput[sketch_func->get_name()] = throughput;
     }
 
 
