@@ -1,5 +1,5 @@
-#ifndef _CCCOUNTER3_H
-#define _CCCOUNTER3_H
+#ifndef _CCCOUNTER4_H
+#define _CCCOUNTER4_H
 
 #include <iostream>
 #include <stdio.h>
@@ -10,7 +10,7 @@
 #include "BOBHash.h"
 
 using namespace std;
-class CCCounter3
+class CCCounter4
 {
 private:
 	struct bucket_t {	//one bucket
@@ -25,7 +25,7 @@ private:
 	BOBHash * bobhash[2];		//Bob hash function
 
 public:
-	CCCounter3(uint _bucket) {
+	CCCounter4(uint _bucket) {
 		bucket_num = _bucket;
 		for (int i = 0; i < 2; i++) {
 			bobhash[i] = new BOBHash(i + 1000);
@@ -34,12 +34,9 @@ public:
 			bucket[i] = new bucket_t[bucket_num];
 			memset(bucket[i], 0, sizeof(bucket_t) * bucket_num);
 		}
-		for(int i = 0;i < 2;i++){
-			for(int j=0;j<bucket_num;j++){
-				bucket[i][j].flag = 1;
-			}
+		for(int j=0;j<bucket_num;j++){
+			bucket[0][j].flag = 1;
 		}
-		
 	}
 	
 	bool overflow_flag0(bucket_t* b, int j) {	//overflow occur in entry_j in the bucket
@@ -438,7 +435,7 @@ public:
 						if (!res){
 							if(j==1 || j==2){	
 								bucket[i][hash[i]].fingerprint[1] = fp;
-								bucket[i][hash[i]].count12 = 0x10;
+								bucket[i][hash[i]].count12 = 0xf0;
 								bucket[i][hash[i]].fingerprint[0] = NULL;
 								bucket[i][hash[i]].flag = 1;
 							}else{	
@@ -650,4 +647,4 @@ public:
 		}
 	}
 };
-#endif//_CCCOUNTER3_H
+#endif//_CCCOUNTER4_H

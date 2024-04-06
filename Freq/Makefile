@@ -5,7 +5,7 @@ all: $(PROGRAMS)
 
 main:main.cpp  PCUSketch.h \
 	params.h BOBHash.h CMSketch.h CUSketch.h  ASketch.h\
-	cuckoo_counter.h ElasticSketch.h MVSketch.h
+	cuckoo_counter.h cuckoo_counter2.h cuckoo_counter3.h ElasticSketch.h MVSketch.h
 	g++ -o cuckoo main.cpp $(CPPFLAGS)
 
 clean:
